@@ -36,12 +36,23 @@
                     Join
                 </button>
             </div>
+
+            <div class="relative flex py-2 items-center">
+                <div class="flex-grow border-t border-gray-600"></div>
+                <span class="flex-shrink-0 mx-4 text-gray-400 font-semibold text-sm">OR</span>
+                <div class="flex-grow border-t border-gray-600"></div>
+            </div>
+
+            <button id="btn-solo-play" class="w-full py-3 bg-gray-700 hover:bg-gray-600 text-gray-200 font-bold rounded-xl transition-all duration-300 border border-gray-600 hover:border-gray-400">
+                ⚔️ Solo Play (Practice)
+            </button>
         </div>
 
-        <div id="loading-status" class="mt-8 text-gray-400 font-medium animate-pulse hidden">
-            Connecting to server...
+        <div id="loading-status" class="mt-8 text-yellow-300 font-medium animate-pulse hidden text-lg">
+            Connecting...
         </div>
     </div>
+
 
     <!-- HUD (Hidden by default) -->
     <div id="hud" class="absolute top-0 left-0 w-full h-full z-10 pointer-events-none hidden">

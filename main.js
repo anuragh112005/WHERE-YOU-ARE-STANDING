@@ -244,31 +244,64 @@ function shootWeapon() {
 
 // Networking Setup
 function setupNetworking() {
-    loadingStatus.classList.remove('hidden');
-    
     if (gameState.isHost) {
-        loadingStatus.innerText = "Creating Lobby...";
-        peer = new window.Peer('arena-' + gameState.roomCode);
-        
+        loadingStatus.classList.remove('hidden');
+        loadingStatus.innerText = '⏳ Creating lobby... (connecting to PeerJS)';
+
+        // Use a plain peer ID so it's shareable
+        const peerId = 'arena-' + gameState.roomCode;
+        try {
+            peer = new window.Peer(peerId);
+        } catch(e) {
+            loadingStatus.innerText = '❌ PeerJS not loaded. Check your connection.';
+            return;
+        }
+
         peer.on('open', (id) => {
-            console.log('Host Lobby created:', id);
-            loadingStatus.innerText = "Waiting for players...";
+            console.log('Host ready, ID:', id);
+            loadingStatus.classList.add('hidden');
+            // Show the room code prominently so user can share it
+            hudRoomCode.innerText = gameState.roomCode;
+            enterGame();
         });
-        
+
         peer.on('connection', (connection) => {
             conn = connection;
             console.log('Player joined!');
-            loadingStatus.classList.add('hidden');
             setupConnectionEvents();
         });
-        
+
+        peer.on('error', (err) => {
+            console.error('PeerJS error:', err);
+            if (err.type === 'unavailable-id') {
+                // Room code collision — generate a new one
+                gameState.roomCode = Math.random().toString(36).substring(2, 6).toUpperCase();
+                loadingStatus.innerText = `Code taken! Trying new code: ${gameState.roomCode}...`;
+                setTimeout(setupNetworking, 500);
+            } else {
+                loadingStatus.innerText = `Network error: ${err.type}. Playing solo.`;
+                setTimeout(enterGame, 1500);
+            }
+        });
+
     } else {
-        loadingStatus.innerText = "Joining Lobby...";
-        peer = new window.Peer(); // random id
-        
+        loadingStatus.classList.remove('hidden');
+        loadingStatus.innerText = '⏳ Joining lobby...';
+
+        try {
+            peer = new window.Peer();
+        } catch(e) {
+            loadingStatus.innerText = '❌ PeerJS not loaded.';
+            return;
+        }
+
         peer.on('open', (id) => {
             conn = peer.connect('arena-' + gameState.roomCode);
             setupConnectionEvents();
+        });
+
+        peer.on('error', (err) => {
+            loadingStatus.innerText = `Could not join: ${err.type}. Is the code correct?`;
         });
     }
 }
@@ -277,6 +310,8 @@ function setupConnectionEvents() {
     conn.on('open', () => {
         console.log('Connected to peer!');
         loadingStatus.classList.add('hidden');
+        hudRoomCode.innerText = gameState.roomCode;
+        enterGame();
     });
     
     conn.on('data', (data) => {
@@ -285,7 +320,6 @@ function setupConnectionEvents() {
         } else if (data.type === 'shoot') {
             handleNetworkShoot(data);
         } else if (data.type === 'death') {
-            // Target died! Reward me.
             addCoins(200);
             console.log("Kill! +200 coins");
         }
@@ -685,23 +719,40 @@ function animate() {
 animate();
 
 // UI Interactions
-btnCreateLobby.addEventListener('click', async () => {
-    // Generate a random 4 letter room code
+btnCreateLobby.addEventListener('click', () => {
     const code = Math.random().toString(36).substring(2, 6).toUpperCase();
     gameState.isHost = true;
     gameState.roomCode = code;
-    
+    // Show code BEFORE networking starts so user sees it immediately
+    loadingStatus.classList.remove('hidden');
+    loadingStatus.innerText = `📋 Your Room Code: ${code}  —  Connecting...`;
     startGame();
 });
 
 btnJoinLobby.addEventListener('click', () => {
     const code = inputLobbyCode.value.trim().toUpperCase();
-    if (code.length > 0) {
+    if (code.length >= 4) {
         gameState.isHost = false;
         gameState.roomCode = code;
         startGame();
+    } else {
+        inputLobbyCode.style.borderColor = 'red';
+        setTimeout(() => inputLobbyCode.style.borderColor = '', 1000);
     }
 });
+
+document.getElementById('btn-solo-play').addEventListener('click', () => {
+    gameState.isHost = false;
+    gameState.roomCode = 'SOLO';
+    gameState.inGame = true;
+    uiMainMenu.classList.add('hidden');
+    uiHud.classList.remove('hidden');
+    hudRoomCode.innerText = 'SOLO';
+    canvas.requestPointerLock();
+    loadEnvironment();
+    loadPlayer();
+});
+
 
 // Shop Interactions
 btnCloseShop.addEventListener('click', () => {
@@ -736,15 +787,24 @@ WEAPONS.forEach((def, idx) => {
 });
 
 function startGame() {
+    // Show loading status, hide menu
+    loadingStatus.classList.remove('hidden');
+    loadingStatus.innerText = '⏳ Initializing...';
+    
+    // Start networking — enterGame() is called by peer.on('open') once connected
+    setupNetworking();
+}
+
+// Called once network is ready (or immediately for solo)
+function enterGame() {
     uiMainMenu.classList.add('hidden');
     uiHud.classList.remove('hidden');
-    hudRoomCode.innerText = gameState.roomCode;
+    hudRoomCode.innerText = gameState.roomCode || 'SOLO';
     gameState.inGame = true;
-    
-    // Lock pointer for FPS controls
+
+    // Request pointer lock (must be triggered by user gesture — done via button click chain)
     canvas.requestPointerLock();
-    
-    setupNetworking();
+
     loadEnvironment();
     loadPlayer();
 }
