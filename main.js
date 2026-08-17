@@ -7,16 +7,19 @@ import * as CANNON from 'cannon-es';
 // 1. GAME STATE & AUDIO ENGINE
 // =========================================================
 const gameState = {
-    state: 'LOBBY', // 'LOBBY', 'PLAYING', 'RELOADING', 'FIRING', 'DEAD'
-    coins: 25080,
-    uc: 85061,
+    state: 'LOBBY',
+    coins: 0,
+    uc: 0,
+    level: 1,
+    matchesPlayed: 0,
+    kills: 0,
+    damageDealt: 0,
     isHost: false,
     roomCode: 'SOLO',
     inGame: false,
     isShopOpen: false,
     selectedMode: 'SOLO',
-    kills: 0,
-    damageDealt: 0
+    currentOutfit: 'default'
 };
 
 let health = 100;
@@ -50,15 +53,6 @@ function playSound(type) {
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
             osc.start(now);
             osc.stop(now + 0.12);
-            break;
-        case 'shoot_shotgun':
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(160, now);
-            osc.frequency.exponentialRampToValueAtTime(25, now + 0.22);
-            gain.gain.setValueAtTime(0.6, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.22);
-            osc.start(now);
-            osc.stop(now + 0.22);
             break;
         case 'shoot_pistol':
             osc.type = 'triangle';
@@ -133,7 +127,7 @@ function playSound(type) {
 }
 
 // =========================================================
-// 2. THREE.JS SCENE, LIGHTS & CANNON PHYSICS
+// 2. THREE.JS SCENE & CANNON PHYSICS
 // =========================================================
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -147,12 +141,12 @@ scene.background = new THREE.Color(0x050811);
 scene.fog = new THREE.FogExp2(0x050811, 0.015);
 
 const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 1.4, 3.2);
+camera.position.set(0, 1.35, 3.2);
 
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
 const timeStep = 1 / 60;
 
-// Lights
+// Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
 scene.add(ambientLight);
 
@@ -193,10 +187,10 @@ const SHOP_ITEMS = [
     { id: 'dual_beretta', category: 'pistols', name: 'Dual Berettas', cost: 300, file: './gun_fps_hand.glb', icon: '🔫', type: 'gun', sound: 'shoot_pistol', vfx: 'TypeA', damage: 24, rate: 0.14, magSize: 30, reserve: 90, dmgVal: 24, rateVal: 75, rangeVal: 40, desc: 'High rate of close-quarters fire.', tip: 'Rapid trigger response.' },
 
     // Mid-Tier
-    { id: 'uzi', category: 'mid-tier', name: 'UZI Submachine', cost: 200, file: './uzi.glb', icon: '⚡', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 16, rate: 0.07, magSize: 32, reserve: 120, dmgVal: 16, rateVal: 95, rangeVal: 45, desc: 'Blistering fire rate for run-and-gun skirmishes.', tip: 'Effective in tight hallways.' },
+    { id: 'uzi', category: 'mid-tier', name: 'UZI Submachine', cost: 200, file: './uzi.glb', icon: '⚡', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 16, rate: 0.07, magSize: 32, reserve: 120, dmgVal: 16, rateVal: 95, rangeVal: 45, desc: 'Blistering fire rate for skirmishes.', tip: 'Effective in tight hallways.' },
     { id: 'pp19', category: 'mid-tier', name: 'PP-19 Vityaz', cost: 250, file: './pp-19-01_vityaz.glb', icon: '🎯', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 22, rate: 0.10, magSize: 30, reserve: 90, dmgVal: 22, rateVal: 85, rangeVal: 60, desc: 'Predictable 9mm recoil pattern.', tip: 'Easy burst control.' },
     { id: 'ump', category: 'mid-tier', name: 'HK UMP', cost: 300, file: './heckler__koch_ump.glb', icon: '🎖️', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 26, rate: 0.13, magSize: 25, reserve: 75, dmgVal: 26, rateVal: 70, rangeVal: 65, desc: '.45 ACP punch with high stopping power.', tip: 'Medium range bursts.' },
-    { id: 'm590', category: 'mid-tier', name: 'M590 Shotgun', cost: 400, file: './free_fire_gun_m590.glb', icon: '💣', type: 'gun', sound: 'shoot_shotgun', vfx: 'TypeC', damage: 95, rate: 0.90, magSize: 8, reserve: 32, dmgVal: 95, rateVal: 15, rangeVal: 30, desc: 'Devastating pump-action close range blast.', tip: 'One-shot kill at point blank.' },
+    { id: 'm590', category: 'mid-tier', name: 'M590 Shotgun', cost: 400, file: './free_fire_gun_m590.glb', icon: '💣', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeC', damage: 95, rate: 0.90, magSize: 8, reserve: 32, dmgVal: 95, rateVal: 15, rangeVal: 30, desc: 'Devastating pump-action close range blast.', tip: 'One-shot kill at point blank.' },
 
     // Rifles
     { id: 'ak47', category: 'rifles', name: 'AK-47', cost: 0, file: './ak-47_mid-poly.glb', icon: '🔫', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 32, rate: 0.15, magSize: 30, reserve: 90, dmgVal: 32, rateVal: 75, rangeVal: 80, desc: 'Lethal combat rifle with high range and power.', tip: 'Tap fire for precision headshots.' },
@@ -210,7 +204,7 @@ const SHOP_ITEMS = [
 let selectedShopItem = SHOP_ITEMS.find(i => i.id === 'ak47');
 
 // =========================================================
-// 4. VFX MANAGER (Muzzle Flashes, Impacts, Decals, Trails)
+// 4. VFX MANAGER
 // =========================================================
 class VFXManager {
     constructor() {
@@ -257,7 +251,7 @@ class VFXManager {
         }, 60);
     }
 
-    createShellEjection(position, direction) {
+    createShellEjection(position) {
         const shellGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.05, 6);
         const shellMat = new THREE.MeshStandardMaterial({
             color: 0xd97706,
@@ -269,7 +263,7 @@ class VFXManager {
         scene.add(shell);
 
         const vel = new THREE.Vector3(
-            (Math.random() * 0.4 + 0.3) * (direction?.x || 1),
+            Math.random() * 0.4 + 0.3,
             Math.random() * 0.5 + 0.5,
             Math.random() * 0.4 - 0.2
         );
@@ -314,8 +308,6 @@ class VFXManager {
         }
 
         if (surfaceType === 'metal') playSound('hit_metal');
-
-        // Create bullet hole decal
         this.createBulletHole(point, normal);
     }
 
@@ -391,20 +383,18 @@ class VFXManager {
 const vfxManager = new VFXManager();
 
 // =========================================================
-// 5. RELOAD SYSTEM & AMMO MANAGEMENT
+// 5. RELOAD SYSTEM
 // =========================================================
 class ReloadSystem {
     constructor() {
         this.isReloading = false;
         this.reloadProgress = 0;
         this.reloadDuration = 2.4;
-        this.stage = 0; // 1: mag out, 2: mag in, 3: chamber slide
+        this.stage = 0;
     }
 
     startReload(weapon) {
-        if (this.isReloading || weapon.ammo >= weapon.magSize || weapon.reserve <= 0) {
-            return;
-        }
+        if (this.isReloading || weapon.ammo >= weapon.magSize || weapon.reserve <= 0) return;
         this.isReloading = true;
         this.reloadProgress = 0;
         this.stage = 1;
@@ -424,13 +414,11 @@ class ReloadSystem {
         const progressPct = Math.min(100, Math.round(this.reloadProgress * 100));
         document.getElementById('reload-bar-fill').style.width = progressPct + '%';
 
-        // Stage 2: Mag In sound at 45%
         if (this.stage === 1 && this.reloadProgress >= 0.45) {
             this.stage = 2;
             playSound('reload_mag_in');
         }
 
-        // Stage 3: Slide pull sound at 80%
         if (this.stage === 2 && this.reloadProgress >= 0.80) {
             this.stage = 3;
             playSound('reload_slide');
@@ -462,7 +450,7 @@ class ReloadSystem {
 const reloadSystem = new ReloadSystem();
 
 // =========================================================
-// 6. WEAPON SYSTEM (ADS, Sway, Hand Attachment, Fire)
+// 6. WEAPON SYSTEM
 // =========================================================
 class WeaponSystem {
     constructor() {
@@ -560,12 +548,10 @@ class WeaponSystem {
         playSound(this.current.sound || 'shoot_rifle');
         updateHUD();
 
-        // Crosshair dynamic spread kick
         const crosshair = document.getElementById('crosshair');
         crosshair.classList.add('crosshair-spread');
         setTimeout(() => crosshair.classList.remove('crosshair-spread'), 100);
 
-        // Muzzle Flash
         const muzzlePos = new THREE.Vector3();
         if (this.mesh) {
             this.mesh.getWorldPosition(muzzlePos);
@@ -574,9 +560,8 @@ class WeaponSystem {
             muzzlePos.copy(camera.position);
         }
         vfxManager.createMuzzleFlash(muzzlePos, this.current.vfx || 'TypeA');
-        vfxManager.createShellEjection(muzzlePos, new THREE.Vector3(1, 0, 0));
+        vfxManager.createShellEjection(muzzlePos);
 
-        // Raycasting
         const raycaster = new THREE.Raycaster();
         raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
 
@@ -595,7 +580,6 @@ class WeaponSystem {
             if (name.includes('metal') || name.includes('pillar') || name.includes('frame')) surface = 'metal';
             else if (name.includes('wood') || name.includes('crate')) surface = 'wood';
 
-            // Check if remote player was hit
             let targetPlayerId = null;
             for (const [id, mesh] of Object.entries(networkPlayers)) {
                 if (hit.object === mesh || hit.object.parent === mesh) {
@@ -610,7 +594,7 @@ class WeaponSystem {
 
             if (targetPlayerId) {
                 gameState.damageDealt += this.current.damage;
-                updateScoreboard();
+                updateStatsModal();
                 if (conn && conn.open) {
                     conn.send({
                         type: 'shoot',
@@ -632,14 +616,12 @@ class WeaponSystem {
     update(delta, time, isMoving) {
         if (this.cooldown > 0) this.cooldown -= delta;
 
-        // Smooth Camera FOV Interpolation for ADS
         if (Math.abs(this.currentFOV - this.targetFOV) > 0.1) {
             this.currentFOV += (this.targetFOV - this.currentFOV) * (delta * 12);
             camera.fov = this.currentFOV;
             camera.updateProjectionMatrix();
         }
 
-        // Weapon Kickback & Sway
         if (this.recoilOffset > 0) {
             this.recoilOffset -= delta * 2;
             if (this.recoilOffset < 0) this.recoilOffset = 0;
@@ -650,7 +632,6 @@ class WeaponSystem {
             const swayY = isMoving ? Math.cos(time * 20) * 0.015 : Math.cos(time * 2) * 0.005;
 
             if (this.isADS) {
-                // Raise weapon to center eye level
                 this.mesh.position.set(0.08, 1.15, 0.35 + this.recoilOffset);
             } else {
                 this.mesh.position.set(
@@ -665,7 +646,7 @@ class WeaponSystem {
 const weaponSystem = new WeaponSystem();
 
 // =========================================================
-// 7. CHARACTER CONTROLLER & GROUND RIGGING
+// 7. CHARACTER RIGGING & MANUAL 360 DRAG
 // =========================================================
 let playerBody, playerMesh;
 let playerFeetOffsetY = 0;
@@ -675,9 +656,15 @@ let cameraPitch = 0;
 let isCrouching = false;
 let colorIndex = Math.floor(Math.random() * 0xffffff);
 
+let isDraggingLobby = false;
+let previousMouseX = 0;
+
 const walkSpeed = 5.5;
 const sprintSpeed = 9.5;
 const jumpVelocity = 6.5;
+
+// Textures cache for outfit swapping
+let textures = {};
 
 async function loadCharacter() {
     const radius = 0.45;
@@ -708,12 +695,12 @@ async function loadCharacter() {
         playerFeetOffsetY = scaledBox.min.y;
 
         const basePath = './New_Character/fbx/stylized_paladin_fbx_extracted/Textures/';
-        const armorTex = texLoader.load(basePath + 'Armor_Base_color.png');
-        const bodyTex = texLoader.load(basePath + 'Body_Base_color.png');
-        const hairTex = texLoader.load(basePath + 'Hair_Color.png');
-        const eyeTex = texLoader.load(basePath + 'Eye_Iris_Color.png');
+        textures.armor = texLoader.load(basePath + 'Armor_Base_color.png');
+        textures.body = texLoader.load(basePath + 'Body_Base_color.png');
+        textures.hair = texLoader.load(basePath + 'Hair_Color.png');
+        textures.eye = texLoader.load(basePath + 'Eye_Iris_Color.png');
 
-        [armorTex, bodyTex, hairTex, eyeTex].forEach(t => { t.colorSpace = THREE.SRGBColorSpace; });
+        Object.values(textures).forEach(t => { t.colorSpace = THREE.SRGBColorSpace; });
 
         paladinLimbs = { rightArm: [], leftArm: [], rightLeg: [], leftLeg: [], torso: [] };
 
@@ -725,15 +712,15 @@ async function loadCharacter() {
             const name = (child.name || '').toLowerCase();
             const matName = (child.material?.name || '').toLowerCase();
 
-            let tex = bodyTex;
+            let tex = textures.body;
             let isArmor = false;
             if (name.includes('armor') || name.includes('boot') || name.includes('neck') || matName.includes('armor')) {
-                tex = armorTex;
+                tex = textures.armor;
                 isArmor = true;
             } else if (name.includes('hair') || name.includes('eyebrow') || name.includes('eyelash') || matName.includes('hair')) {
-                tex = hairTex;
+                tex = textures.hair;
             } else if (name.includes('eye') || matName.includes('eye')) {
-                tex = eyeTex;
+                tex = textures.eye;
             }
 
             child.material = new THREE.MeshStandardMaterial({
@@ -769,7 +756,7 @@ async function loadCharacter() {
 
         scene.add(playerMesh);
 
-        // Equip default weapon
+        // Equip default weapon in lobby
         await weaponSystem.equip(SHOP_ITEMS.find(i => i.id === 'ak47'));
 
     } catch (err) {
@@ -777,7 +764,7 @@ async function loadCharacter() {
     }
 }
 
-// 3D Lobby Platform Setup
+// 3D Lobby Platform Setup with Cyberpunk Image Background
 let lobbyPedestal, lobbyBackgroundMesh;
 function buildLobbyPlatform() {
     lobbyPedestal = new THREE.Group();
@@ -808,7 +795,8 @@ function buildLobbyPlatform() {
     innerRing.position.y = 0.02;
     lobbyPedestal.add(innerRing);
 
-    texLoader.load('./lobby_background.jpg', (tex) => {
+    // Load cyberpunk background image added by user
+    texLoader.load('./cyberpunk-asus-rog-1920x1080-19780.jpg', (tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         const bgGeo = new THREE.SphereGeometry(25, 32, 16);
         const bgMat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.BackSide });
@@ -892,9 +880,9 @@ async function loadArenaEnvironment() {
 }
 
 // =========================================================
-// 9. INPUT HANDLING & GAME CONTROLS
+// 9. INPUT HANDLING & MANUAL LOBBY ROTATION
 // =========================================================
-const keys = { w: false, a: false, s: false, d: false, shift: false, ctrl: false, space: false, tab: false };
+const keys = { w: false, a: false, s: false, d: false, shift: false, ctrl: false, space: false };
 
 window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
@@ -903,16 +891,11 @@ window.addEventListener('keydown', (e) => {
     if (e.ctrlKey) keys.ctrl = true;
     if (e.code === 'Space') keys.space = true;
 
-    if (e.code === 'Tab') {
-        e.preventDefault();
-        document.getElementById('scoreboard-modal').classList.remove('hidden');
-    }
-
     if (k === 'r' && gameState.inGame && !gameState.isShopOpen) {
         reloadSystem.startReload(weaponSystem.current);
     }
 
-    if (k === 'b') {
+    if (k === 'b' && gameState.inGame) {
         toggleShop();
     }
 });
@@ -923,24 +906,14 @@ window.addEventListener('keyup', (e) => {
     if (!e.shiftKey) keys.shift = false;
     if (!e.ctrlKey) keys.ctrl = false;
     if (e.code === 'Space') keys.space = false;
-
-    if (e.code === 'Tab') {
-        e.preventDefault();
-        document.getElementById('scoreboard-modal').classList.add('hidden');
-    }
 });
 
-window.addEventListener('mousemove', (e) => {
-    if (document.pointerLockElement === canvas && gameState.inGame && !gameState.isShopOpen) {
-        const sens = weaponSystem.isADS ? 0.0012 : 0.0022;
-        cameraYaw -= e.movementX * sens;
-        cameraPitch -= e.movementY * sens;
-        cameraPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, cameraPitch));
-    }
-});
-
+// Manual 360° Drag Rotation in Lobby
 window.addEventListener('mousedown', (e) => {
-    if (document.pointerLockElement === canvas && gameState.inGame && !gameState.isShopOpen) {
+    if (!gameState.inGame && e.button === 0) {
+        isDraggingLobby = true;
+        previousMouseX = e.clientX;
+    } else if (document.pointerLockElement === canvas && gameState.inGame && !gameState.isShopOpen) {
         if (e.button === 0) {
             weaponSystem.fire(camera, scene.children);
         } else if (e.button === 2) {
@@ -949,8 +922,24 @@ window.addEventListener('mousedown', (e) => {
     }
 });
 
+window.addEventListener('mousemove', (e) => {
+    if (!gameState.inGame && isDraggingLobby && playerMesh) {
+        const deltaX = e.clientX - previousMouseX;
+        previousMouseX = e.clientX;
+        playerMesh.rotation.y += deltaX * 0.008;
+    } else if (document.pointerLockElement === canvas && gameState.inGame && !gameState.isShopOpen) {
+        const sens = weaponSystem.isADS ? 0.0012 : 0.0022;
+        cameraYaw -= e.movementX * sens;
+        cameraPitch -= e.movementY * sens;
+        cameraPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, cameraPitch));
+    }
+});
+
 window.addEventListener('mouseup', (e) => {
-    if (e.button === 2) {
+    if (!gameState.inGame) {
+        isDraggingLobby = false;
+    }
+    if (e.button === 2 && gameState.inGame) {
         weaponSystem.toggleADS(false);
     }
 });
@@ -958,11 +947,12 @@ window.addEventListener('mouseup', (e) => {
 window.addEventListener('contextmenu', e => e.preventDefault());
 
 // =========================================================
-// 10. UI, HUD & CS:GO BUY MENU
+// 10. UI, MODALS, CHAT & INVENTORY LOCKER
 // =========================================================
 function updateHUD() {
     document.getElementById('coin-display').innerText = gameState.coins.toLocaleString();
     document.getElementById('lobby-coins').innerText = gameState.coins.toLocaleString();
+    document.getElementById('lobby-uc').innerText = gameState.uc.toLocaleString();
     document.getElementById('shop-coins').innerText = gameState.coins.toLocaleString();
 
     document.getElementById('health-value').innerText = Math.max(0, Math.round(health));
@@ -985,9 +975,12 @@ function updateHUD() {
     }
 }
 
-function updateScoreboard() {
-    document.getElementById('sb-kills').innerText = gameState.kills;
-    document.getElementById('sb-damage').innerText = gameState.damageDealt;
+function updateStatsModal() {
+    document.getElementById('stat-matches').innerText = gameState.matchesPlayed;
+    document.getElementById('stat-kills').innerText = gameState.kills;
+    document.getElementById('stat-damage').innerText = gameState.damageDealt;
+    const kd = gameState.matchesPlayed > 0 ? (gameState.kills / gameState.matchesPlayed).toFixed(2) : (gameState.kills).toFixed(2);
+    document.getElementById('stat-kd').innerText = kd;
 }
 
 function flashDamageIndicator() {
@@ -1008,6 +1001,184 @@ function addKillFeed(text) {
     }, 4000);
 }
 
+// World Chat Logic
+const modalChat = document.getElementById('modal-chat');
+const btnOpenChat = document.getElementById('btn-open-chat');
+const btnCloseChat = document.getElementById('btn-close-chat');
+const chatForm = document.getElementById('chat-form');
+const chatInput = document.getElementById('chat-input');
+const chatMessagesContainer = document.getElementById('chat-messages-container');
+const chatPreviewText = document.getElementById('chat-preview-text');
+
+btnOpenChat.addEventListener('click', () => {
+    modalChat.classList.remove('hidden');
+    chatInput.focus();
+});
+btnCloseChat.addEventListener('click', () => modalChat.classList.add('hidden'));
+
+chatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const msg = chatInput.value.trim();
+    if (!msg) return;
+
+    if (chatMessagesContainer.innerText.includes('No messages in global channel yet.')) {
+        chatMessagesContainer.innerHTML = '';
+    }
+
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const msgEl = document.createElement('div');
+    msgEl.className = 'bg-white/5 p-2 rounded-lg border border-white/5';
+    msgEl.innerHTML = `<span class="text-cyan-400 font-bold font-mono">[Recruit]</span> <span class="text-gray-400 text-[10px]">${timeStr}</span>: <span class="text-white">${msg}</span>`;
+    chatMessagesContainer.appendChild(msgEl);
+    chatMessagesContainer.scrollTop = chatMessagesContainer.scrollHeight;
+
+    chatPreviewText.innerText = msg;
+    chatInput.value = '';
+
+    if (conn && conn.open) {
+        conn.send({ type: 'chat', text: msg });
+    }
+});
+
+// Season 1 Modal
+const modalSeason = document.getElementById('modal-season');
+document.getElementById('btn-nav-season').addEventListener('click', () => {
+    updateStatsModal();
+    modalSeason.classList.remove('hidden');
+});
+document.getElementById('btn-close-season').addEventListener('click', () => modalSeason.classList.add('hidden'));
+
+// Royale Pass Modal
+const modalRp = document.getElementById('modal-rp');
+document.getElementById('btn-rp').addEventListener('click', () => modalRp.classList.remove('hidden'));
+document.getElementById('btn-close-rp').addEventListener('click', () => modalRp.classList.add('hidden'));
+
+// Inventory / Locker Modal
+const modalInventory = document.getElementById('modal-inventory');
+document.getElementById('btn-open-inventory-locker').addEventListener('click', () => modalInventory.classList.remove('hidden'));
+document.getElementById('btn-nav-inventory').addEventListener('click', () => modalInventory.classList.remove('hidden'));
+document.getElementById('btn-close-inventory').addEventListener('click', () => modalInventory.classList.add('hidden'));
+
+const tabInvOutfits = document.getElementById('tab-inv-outfits');
+const tabInvGuns = document.getElementById('tab-inv-guns');
+const gridInvOutfits = document.getElementById('grid-inv-outfits');
+const gridInvGuns = document.getElementById('grid-inv-guns');
+
+tabInvOutfits.addEventListener('click', () => {
+    tabInvOutfits.className = 'text-cyan-400 border-b-2 border-cyan-400 pb-1 font-bold';
+    tabInvGuns.className = 'text-gray-400 hover:text-white pb-1 font-bold';
+    gridInvOutfits.classList.remove('hidden');
+    gridInvGuns.classList.add('hidden');
+});
+
+tabInvGuns.addEventListener('click', () => {
+    tabInvGuns.className = 'text-cyan-400 border-b-2 border-cyan-400 pb-1 font-bold';
+    tabInvOutfits.className = 'text-gray-400 hover:text-white pb-1 font-bold';
+    gridInvGuns.classList.remove('hidden');
+    gridInvOutfits.classList.add('hidden');
+});
+
+// Outfit selection
+document.querySelectorAll('#grid-inv-outfits .inv-card').forEach(card => {
+    card.addEventListener('click', () => {
+        document.querySelectorAll('#grid-inv-outfits .inv-card').forEach(c => {
+            c.classList.remove('equipped');
+            c.querySelector('span').className = 'text-xs font-bold text-cyan-400 font-mono';
+            c.querySelector('span').innerText = 'CLICK TO EQUIP';
+        });
+        card.classList.add('equipped');
+        card.querySelector('span').className = 'text-xs font-bold text-amber-400 font-mono';
+        card.querySelector('span').innerText = 'EQUIPPED ✓';
+
+        const outfit = card.getAttribute('data-outfit');
+        gameState.currentOutfit = outfit;
+        applyOutfitToModel(outfit);
+        playSound('buy');
+    });
+});
+
+function applyOutfitToModel(outfit) {
+    if (!playerMesh) return;
+    playerMesh.traverse(child => {
+        if (child.isMesh && child.material) {
+            if (outfit === 'assassin') {
+                child.material.color.setHex(0x334155);
+            } else if (outfit === 'vanguard') {
+                child.material.color.setHex(0x06b6d4);
+            } else {
+                child.material.color.setHex(0xffffff);
+            }
+        }
+    });
+}
+
+// Gun skin selection in inventory
+document.querySelectorAll('#grid-inv-guns .inv-card').forEach(card => {
+    card.addEventListener('click', () => {
+        document.querySelectorAll('#grid-inv-guns .inv-card').forEach(c => {
+            c.classList.remove('equipped');
+            c.querySelector('span').className = 'text-xs font-bold text-cyan-400 font-mono';
+            c.querySelector('span').innerText = 'CLICK TO EQUIP';
+        });
+        card.classList.add('equipped');
+        card.querySelector('span').className = 'text-xs font-bold text-amber-400 font-mono';
+        card.querySelector('span').innerText = 'EQUIPPED ✓';
+
+        const gunId = card.getAttribute('data-gun');
+        const item = SHOP_ITEMS.find(i => i.id === gunId);
+        if (item) {
+            weaponSystem.equip(item);
+            playSound('reload_slide');
+        }
+    });
+});
+
+// Mode Selector
+const modalModeSelect = document.getElementById('modal-mode-select');
+document.getElementById('btn-open-mode-modal').addEventListener('click', () => modalModeSelect.classList.remove('hidden'));
+document.getElementById('mode-badge-card').addEventListener('click', () => modalModeSelect.classList.remove('hidden'));
+document.getElementById('btn-close-mode-modal').addEventListener('click', () => modalModeSelect.classList.add('hidden'));
+
+document.getElementById('mode-opt-solo').addEventListener('click', () => {
+    gameState.selectedMode = 'SOLO';
+    gameState.roomCode = 'SOLO';
+    document.getElementById('current-mode-tag').innerText = 'EvoGround (TPP)';
+    document.getElementById('current-mode-desc').innerText = 'Selected: Arena Metropolis';
+    document.getElementById('lobby-room-code-tag').innerText = 'SOLO PRACTICE';
+    modalModeSelect.classList.add('hidden');
+});
+
+document.getElementById('mode-opt-host').addEventListener('click', () => {
+    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
+    gameState.selectedMode = 'HOST';
+    gameState.isHost = true;
+    gameState.roomCode = code;
+    document.getElementById('current-mode-tag').innerText = 'P2P MULTIPLAYER';
+    document.getElementById('current-mode-desc').innerText = `Room Host: ${code}`;
+    document.getElementById('lobby-room-code-tag').innerText = `ROOM: ${code}`;
+    modalModeSelect.classList.add('hidden');
+});
+
+document.getElementById('btn-modal-join').addEventListener('click', () => {
+    const code = document.getElementById('modal-input-code').value.trim().toUpperCase();
+    if (code.length >= 4) {
+        gameState.selectedMode = 'JOIN';
+        gameState.isHost = false;
+        gameState.roomCode = code;
+        document.getElementById('current-mode-tag').innerText = 'P2P MULTIPLAYER';
+        document.getElementById('current-mode-desc').innerText = `Joining Room: ${code}`;
+        document.getElementById('lobby-room-code-tag').innerText = `ROOM: ${code}`;
+        modalModeSelect.classList.add('hidden');
+    }
+});
+
+document.getElementById('btn-pubg-start').addEventListener('click', () => {
+    playSound('reload_slide');
+    document.getElementById('btn-pubg-start').innerHTML = '<span>DEPLOYING...</span>';
+    setupNetworking();
+});
+
+// In-Game Buy Menu Logic
 function renderBuyMenu() {
     const cols = {
         'equipment': document.getElementById('col-equipment'),
@@ -1142,55 +1313,8 @@ function toggleShop() {
 }
 
 document.getElementById('btn-close-shop').addEventListener('click', toggleShop);
-document.getElementById('btn-open-armory').addEventListener('click', toggleShop);
-document.getElementById('btn-nav-inventory').addEventListener('click', toggleShop);
 
-// Mode Modal & Setup
-const modalModeSelect = document.getElementById('modal-mode-select');
-document.getElementById('btn-open-mode-modal').addEventListener('click', () => modalModeSelect.classList.remove('hidden'));
-document.getElementById('mode-badge-card').addEventListener('click', () => modalModeSelect.classList.remove('hidden'));
-document.getElementById('btn-close-mode-modal').addEventListener('click', () => modalModeSelect.classList.add('hidden'));
-
-document.getElementById('mode-opt-solo').addEventListener('click', () => {
-    gameState.selectedMode = 'SOLO';
-    gameState.roomCode = 'SOLO';
-    document.getElementById('current-mode-tag').innerText = 'EvoGround (TPP)';
-    document.getElementById('current-mode-desc').innerText = 'Selected: Arena Metropolis';
-    document.getElementById('lobby-room-code-tag').innerText = 'SOLO PRACTICE';
-    modalModeSelect.classList.add('hidden');
-});
-
-document.getElementById('mode-opt-host').addEventListener('click', () => {
-    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-    gameState.selectedMode = 'HOST';
-    gameState.isHost = true;
-    gameState.roomCode = code;
-    document.getElementById('current-mode-tag').innerText = 'P2P MULTIPLAYER';
-    document.getElementById('current-mode-desc').innerText = `Room Host: ${code}`;
-    document.getElementById('lobby-room-code-tag').innerText = `ROOM: ${code}`;
-    modalModeSelect.classList.add('hidden');
-});
-
-document.getElementById('btn-modal-join').addEventListener('click', () => {
-    const code = document.getElementById('modal-input-code').value.trim().toUpperCase();
-    if (code.length >= 4) {
-        gameState.selectedMode = 'JOIN';
-        gameState.isHost = false;
-        gameState.roomCode = code;
-        document.getElementById('current-mode-tag').innerText = 'P2P MULTIPLAYER';
-        document.getElementById('current-mode-desc').innerText = `Joining Room: ${code}`;
-        document.getElementById('lobby-room-code-tag').innerText = `ROOM: ${code}`;
-        modalModeSelect.classList.add('hidden');
-    }
-});
-
-document.getElementById('btn-pubg-start').addEventListener('click', () => {
-    playSound('reload_slide');
-    document.getElementById('btn-pubg-start').innerHTML = '<span>DEPLOYING...</span>';
-    setupNetworking();
-});
-
-// Networking (PeerJS)
+// Networking
 function setupNetworking() {
     if (gameState.isHost) {
         try {
@@ -1224,11 +1348,18 @@ function setupNetEvents() {
     conn.on('data', data => {
         if (data.type === 'state') handleNetworkState(data);
         else if (data.type === 'shoot') handleNetworkDamage(data);
-        else if (data.type === 'death') {
+        else if (data.type === 'chat') {
+            const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const msgEl = document.createElement('div');
+            msgEl.className = 'bg-white/5 p-2 rounded-lg border border-white/5';
+            msgEl.innerHTML = `<span class="text-amber-400 font-bold font-mono">[Agent]</span> <span class="text-gray-400 text-[10px]">${timeStr}</span>: <span class="text-white">${data.text}</span>`;
+            chatMessagesContainer.appendChild(msgEl);
+            chatPreviewText.innerText = data.text;
+        } else if (data.type === 'death') {
             gameState.kills++;
             gameState.coins += 500;
             addKillFeed('Eliminated Enemy Agent (+500 Coins)');
-            updateScoreboard();
+            updateStatsModal();
             updateHUD();
         }
     });
@@ -1275,8 +1406,16 @@ async function enterGame() {
     if (gameStarted) return;
     gameStarted = true;
 
+    gameState.matchesPlayed++;
+    updateStatsModal();
+
     document.getElementById('main-menu').classList.add('hidden');
     modalModeSelect.classList.add('hidden');
+    modalInventory.classList.add('hidden');
+    modalSeason.classList.add('hidden');
+    modalChat.classList.add('hidden');
+    modalRp.classList.add('hidden');
+
     document.getElementById('hud').classList.remove('hidden');
     document.getElementById('hud-room-code').innerText = gameState.roomCode;
     gameState.inGame = true;
@@ -1295,7 +1434,7 @@ async function enterGame() {
 }
 
 // =========================================================
-// 11. MAIN GAME LOOP & CHARACTER PHYSICS
+// 11. MAIN GAME LOOP
 // =========================================================
 const clock = new THREE.Clock();
 
@@ -1305,30 +1444,21 @@ function animate() {
     const delta = clock.getDelta();
     const time = clock.getElapsedTime();
 
-    // Update VFX Particles & Bullet Holes
     vfxManager.update(delta);
-
-    // Update Reload System
     reloadSystem.update(delta, weaponSystem.current);
 
     if (!gameState.inGame) {
-        // Lobby Idle Orbit & Paladin Rotation
+        // In Lobby: Character stays static until user drags horizontally
         if (playerMesh) {
             playerMesh.position.set(0, 0.02, 0);
-            playerMesh.rotation.y = time * 0.35;
         }
-        if (lobbyPedestal) lobbyPedestal.rotation.y = -time * 0.15;
-
-        const orbitDist = 3.4;
-        camera.position.x = Math.sin(time * 0.12) * 1.8;
-        camera.position.y = 1.05 + Math.sin(time * 0.4) * 0.06;
-        camera.position.z = orbitDist;
+        // Camera fixed view
+        camera.position.set(0, 1.35, 3.2);
         camera.lookAt(0, 0.85, 0);
     } else {
         world.step(timeStep, delta, 3);
         updatePlayerController(delta, time);
 
-        // Network tick
         if (conn && conn.open && playerBody && playerMesh) {
             lastNetTick += delta;
             if (lastNetTick >= netTickRate) {
@@ -1350,7 +1480,6 @@ function animate() {
 function updatePlayerController(delta, time) {
     if (!playerBody || !gameState.inGame) return;
 
-    // Out-of-bounds Stuck Reset (prevents falling below arena)
     if (playerBody.position.y < -2.0) {
         playerBody.position.set(6, 0.9, 6);
         playerBody.velocity.set(0, 0, 0);
@@ -1384,13 +1513,11 @@ function updatePlayerController(delta, time) {
         playerBody.velocity.z *= 0.5;
     }
 
-    // Ground raycasting for terrain alignment
     if (keys.space && Math.abs(playerBody.velocity.y) < 0.1) {
         playerBody.velocity.y = jumpVelocity;
         keys.space = false;
     }
 
-    // Sync mesh to physics body with grounded feet offset
     if (playerMesh) {
         const groundContactY = playerBody.position.y - 0.7;
         playerMesh.position.x = playerBody.position.x;
@@ -1426,7 +1553,6 @@ function updatePlayerController(delta, time) {
         if (isCrouching) playerMesh.position.y -= 0.3;
     }
 
-    // Third-person Camera Rig with ADS Zoom
     const orbitDist = weaponSystem.isADS ? 2.2 : (isCrouching ? 2.5 : 3.8);
     const yOffset = weaponSystem.isADS ? 1.35 : (isCrouching ? 0.6 : 1.45);
 
@@ -1437,7 +1563,6 @@ function updatePlayerController(delta, time) {
     camera.position.set(camX, camY, camZ);
     camera.lookAt(playerBody.position.x, playerBody.position.y + yOffset, playerBody.position.z);
 
-    // Update Weapon Sway & ADS
     weaponSystem.update(delta, time, isMoving);
 }
 
@@ -1445,3 +1570,4 @@ function updatePlayerController(delta, time) {
 loadCharacter();
 animate();
 updateHUD();
+updateStatsModal();

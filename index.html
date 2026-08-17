@@ -11,7 +11,7 @@
 <body class="bg-[#050811] overflow-hidden text-white font-sans">
     
     <!-- 3D Canvas -->
-    <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
+    <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full z-0 cursor-grab active:cursor-grabbing"></canvas>
 
     <!-- Damage Directional Flash Overlay -->
     <div id="damage-flash" class="damage-flash-overlay"></div>
@@ -51,32 +51,32 @@
                 <!-- Mission Notification -->
                 <div class="bg-blue-950/70 border border-blue-500/40 backdrop-blur-md px-3 py-1.5 rounded-lg flex items-center gap-2 text-xs font-bold text-blue-300 max-w-xs shadow-lg">
                     <span>💎</span>
-                    <span>Daily Mission: 5 Eliminations • Claim 100 EXP</span>
+                    <span>Daily Mission: Enter Match • Reward: 50 EXP</span>
                 </div>
             </div>
 
-            <!-- Top Right: Currencies & Player Profile -->
+            <!-- Top Right: Fresh Player Stats (Coins 0, UC 0, LVL 1) -->
             <div class="flex items-center gap-4">
                 <div class="bg-black/60 backdrop-blur-md border border-white/15 px-4 py-1.5 rounded-xl flex items-center gap-2 shadow-xl">
                     <span class="text-lg">🪙</span>
-                    <span id="lobby-coins" class="font-heading text-2xl font-bold text-amber-400 tracking-wider">25,080</span>
+                    <span id="lobby-coins" class="font-heading text-2xl font-bold text-amber-400 tracking-wider">0</span>
                 </div>
 
                 <div class="bg-black/60 backdrop-blur-md border border-white/15 px-4 py-1.5 rounded-xl flex items-center gap-2 shadow-xl">
                     <span class="text-lg">💎</span>
-                    <span class="font-heading text-2xl font-bold text-cyan-400 tracking-wider">85,061</span>
+                    <span id="lobby-uc" class="font-heading text-2xl font-bold text-cyan-400 tracking-wider">0</span>
                 </div>
 
-                <div class="flex items-center gap-3 bg-black/60 backdrop-blur-md border border-white/20 p-1.5 pr-4 rounded-2xl shadow-xl">
-                    <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-300 p-0.5 shadow-[0_0_15px_rgba(245,158,11,0.4)]">
-                        <div class="w-full h-full bg-gray-900 rounded-[10px] flex items-center justify-center font-bold text-amber-400 text-lg">
-                            👑
+                <div id="btn-player-profile" class="flex items-center gap-3 bg-black/60 backdrop-blur-md border border-white/20 p-1.5 pr-4 rounded-2xl shadow-xl cursor-pointer hover:border-cyan-400 transition-all">
+                    <div class="w-11 h-11 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-400 p-0.5 shadow-[0_0_15px_rgba(6,182,212,0.4)]">
+                        <div class="w-full h-full bg-gray-900 rounded-[10px] flex items-center justify-center font-bold text-cyan-400 text-lg">
+                            🎖️
                         </div>
                     </div>
                     <div>
                         <div class="flex items-center gap-2">
-                            <span class="font-bold text-sm text-white">COMMANDER</span>
-                            <span class="bg-amber-500/20 text-amber-400 text-xs px-1.5 py-0.2 rounded font-mono font-bold border border-amber-500/30">LVL 62</span>
+                            <span class="font-bold text-sm text-white">RECRUIT</span>
+                            <span class="bg-cyan-500/20 text-cyan-400 text-xs px-1.5 py-0.2 rounded font-mono font-bold border border-cyan-500/30">LVL 1</span>
                         </div>
                         <span id="lobby-room-code-tag" class="text-[11px] text-cyan-400 font-mono font-bold">SOLO / P2P</span>
                     </div>
@@ -84,8 +84,15 @@
             </div>
         </header>
 
+        <!-- Drag prompt hint in center screen -->
+        <div class="w-full flex justify-center items-center pointer-events-none">
+            <div class="bg-black/40 backdrop-blur-sm px-4 py-1.5 rounded-full border border-white/10 text-xs font-bold text-gray-400 shadow-md">
+                🖱️ Drag mouse horizontally to rotate character 360°
+            </div>
+        </div>
+
         <!-- Floating Left & Right Bars -->
-        <div class="w-full flex justify-between items-center flex-grow py-4 pointer-events-none">
+        <div class="w-full flex justify-between items-center pointer-events-none">
             <!-- Left Side: Squad Friends Bar -->
             <div class="flex flex-col gap-3 pointer-events-auto">
                 <div class="bg-black/60 backdrop-blur-md p-2 rounded-2xl border border-white/10 flex flex-col gap-2 shadow-xl">
@@ -99,36 +106,38 @@
                 </div>
             </div>
 
-            <!-- Right Side: Royale Pass & Armory -->
+            <!-- Right Side: Royale Pass Season 1 (Coming Soon) & Locker -->
             <div class="flex flex-col gap-3 items-end pointer-events-auto">
                 <button id="btn-rp" class="bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-black px-4 py-2 rounded-xl font-heading text-xl font-black flex items-center gap-2 shadow-[0_0_20px_rgba(245,158,11,0.5)] transition-all">
                     <span>👑</span>
-                    <span>ROYALE PASS S9</span>
+                    <span>ROYALE PASS (COMING SOON)</span>
                 </button>
-                <button id="btn-open-armory" class="bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-500/50 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 text-emerald-300 text-xs font-bold shadow-lg transition-all">
-                    <span>🔫</span>
-                    <span>WEAPON ARMORY</span>
+                <button id="btn-open-inventory-locker" class="bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/50 backdrop-blur-md px-4 py-2 rounded-xl flex items-center gap-2 text-cyan-300 text-xs font-bold shadow-lg transition-all">
+                    <span>👗</span>
+                    <span>LOCKER / INVENTORY</span>
                 </button>
             </div>
         </div>
 
         <!-- Bottom Navigation Bar -->
         <footer class="w-full bg-black/60 backdrop-blur-md px-8 py-3 rounded-2xl border border-white/10 flex items-center justify-between shadow-2xl">
-            <div class="flex items-center gap-4 text-xs font-bold text-gray-300">
-                <span class="text-amber-400 font-mono font-bold">📢 [System]:</span>
-                <span class="text-gray-400">Cyberpunk Combat Arena online • Press START to deploy</span>
+            <!-- Left: Interactive World Chat -->
+            <div id="btn-open-chat" class="flex items-center gap-3 text-xs font-bold text-gray-300 cursor-pointer hover:text-white transition-all bg-white/5 px-3 py-1.5 rounded-xl border border-white/10">
+                <span class="text-amber-400 font-mono font-bold">💬 [World]:</span>
+                <span id="chat-preview-text" class="text-gray-400 truncate max-w-xs">No messages yet. Click to chat!</span>
             </div>
 
+            <!-- Center Navigation Links -->
             <nav class="flex items-center gap-8 font-heading text-2xl tracking-wider">
-                <button class="bottom-nav-item font-bold">S9 SEASON</button>
-                <button class="bottom-nav-item font-bold">MISSIONS</button>
-                <button id="btn-nav-inventory" class="bottom-nav-item active font-bold text-amber-400">INVENTORY</button>
-                <button class="bottom-nav-item font-bold">WORKSHOP</button>
-                <button class="bottom-nav-item font-bold">CLAN</button>
+                <button id="btn-nav-season" class="bottom-nav-item font-bold text-amber-400">SEASON 1</button>
+                <button id="btn-nav-missions" class="bottom-nav-item font-bold">MISSIONS</button>
+                <button id="btn-nav-inventory" class="bottom-nav-item active font-bold text-cyan-400">INVENTORY</button>
+                <button id="btn-nav-workshop" class="bottom-nav-item font-bold">WORKSHOP</button>
+                <button id="btn-nav-clan" class="bottom-nav-item font-bold">CLAN</button>
             </nav>
 
             <div class="flex items-center gap-3 text-xs font-bold text-gray-400">
-                <span><kbd class="bg-gray-800 px-1.5 py-0.5 rounded text-white border border-gray-700">B</kbd> BUY</span>
+                <span><kbd class="bg-gray-800 px-1.5 py-0.5 rounded text-white border border-gray-700">WASD</kbd> MOVE</span>
                 <span><kbd class="bg-gray-800 px-1.5 py-0.5 rounded text-white border border-gray-700">R</kbd> RELOAD</span>
                 <span><kbd class="bg-gray-800 px-1.5 py-0.5 rounded text-white border border-gray-700">RMB</kbd> ADS</span>
             </div>
@@ -136,28 +145,191 @@
     </div>
 
     <!-- ========================================================= -->
+    <!-- INTERACTIVE WORLD CHAT MODAL                              -->
+    <!-- ========================================================= -->
+    <div id="modal-chat" class="absolute bottom-20 left-8 z-30 w-96 bg-gray-950/95 border border-cyan-500/40 rounded-2xl p-4 shadow-[0_0_40px_rgba(6,182,212,0.3)] hidden pointer-events-auto backdrop-blur-lg">
+        <div class="flex justify-between items-center border-b border-white/10 pb-2 mb-3">
+            <div class="flex items-center gap-2">
+                <span class="text-amber-400 font-bold font-mono">GLOBAL CHAT</span>
+                <span class="w-2 h-2 rounded-full bg-green-400"></span>
+            </div>
+            <button id="btn-close-chat" class="text-gray-400 hover:text-white font-bold">✕</button>
+        </div>
+        <div id="chat-messages-container" class="h-48 overflow-y-auto space-y-2 text-xs font-medium pr-1 text-gray-400">
+            <div class="text-gray-500 italic text-center py-6">No messages in global channel yet.<br>Be the first to type!</div>
+        </div>
+        <form id="chat-form" class="mt-3 flex gap-2">
+            <input type="text" id="chat-input" placeholder="Type a message..." maxlength="80" class="flex-1 bg-black/60 border border-gray-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-cyan-400">
+            <button type="submit" class="px-4 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-bold transition-all">
+                SEND
+            </button>
+        </form>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- SEASON 1 STATS & CAREER MODAL                             -->
+    <!-- ========================================================= -->
+    <div id="modal-season" class="absolute top-0 left-0 w-full h-full z-30 flex items-center justify-center bg-black/80 backdrop-blur-md hidden pointer-events-auto select-none">
+        <div class="bg-gray-950/95 border border-amber-500/40 p-8 rounded-3xl max-w-2xl w-full shadow-[0_0_50px_rgba(245,158,11,0.3)] flex flex-col gap-6">
+            <div class="flex justify-between items-center border-b border-amber-500/30 pb-3">
+                <div>
+                    <h2 class="font-heading text-4xl font-black text-amber-400 tracking-wider">SEASON 1: CYBER PROTOCOL</h2>
+                    <p class="text-xs text-gray-400">Official Ranked Season • Measure Your Combat Mastery</p>
+                </div>
+                <button id="btn-close-season" class="text-gray-400 hover:text-white text-2xl font-bold">✕</button>
+            </div>
+
+            <!-- Tier Card -->
+            <div class="bg-gradient-to-r from-amber-950/60 to-yellow-950/40 border border-amber-500/40 p-5 rounded-2xl flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <div class="w-16 h-16 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-3xl">
+                        🛡️
+                    </div>
+                    <div>
+                        <div class="font-heading text-3xl font-bold text-white">BRONZE V</div>
+                        <span class="text-xs font-mono text-amber-400 font-bold">0 / 1000 RP (Tier Points)</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-gray-400 font-bold uppercase">NEXT TIER</div>
+                    <div class="font-heading text-2xl font-bold text-gray-300">BRONZE IV</div>
+                </div>
+            </div>
+
+            <!-- Live Season Stats Grid -->
+            <div class="grid grid-cols-4 gap-4">
+                <div class="bg-black/60 p-4 rounded-xl border border-white/10 text-center">
+                    <div class="text-gray-400 text-xs font-bold uppercase mb-1">MATCHES</div>
+                    <div id="stat-matches" class="font-heading text-3xl font-bold text-white">0</div>
+                </div>
+                <div class="bg-black/60 p-4 rounded-xl border border-white/10 text-center">
+                    <div class="text-gray-400 text-xs font-bold uppercase mb-1">TOTAL KILLS</div>
+                    <div id="stat-kills" class="font-heading text-3xl font-bold text-green-400">0</div>
+                </div>
+                <div class="bg-black/60 p-4 rounded-xl border border-white/10 text-center">
+                    <div class="text-gray-400 text-xs font-bold uppercase mb-1">DAMAGE</div>
+                    <div id="stat-damage" class="font-heading text-3xl font-bold text-amber-400">0</div>
+                </div>
+                <div class="bg-black/60 p-4 rounded-xl border border-white/10 text-center">
+                    <div class="text-gray-400 text-xs font-bold uppercase mb-1">K/D RATIO</div>
+                    <div id="stat-kd" class="font-heading text-3xl font-bold text-cyan-400">0.00</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- ROYALE PASS TEASER MODAL                                  -->
+    <!-- ========================================================= -->
+    <div id="modal-rp" class="absolute top-0 left-0 w-full h-full z-30 flex items-center justify-center bg-black/80 backdrop-blur-md hidden pointer-events-auto select-none">
+        <div class="bg-gray-950/95 border border-amber-500/50 p-8 rounded-3xl max-w-lg w-full shadow-[0_0_60px_rgba(245,158,11,0.4)] flex flex-col items-center text-center gap-4">
+            <div class="w-20 h-20 rounded-full bg-amber-500/20 border border-amber-500/60 flex items-center justify-center text-4xl shadow-[0_0_30px_rgba(245,158,11,0.4)]">
+                👑
+            </div>
+            <h2 class="font-heading text-4xl font-black text-amber-400 tracking-wider">ROYALE PASS SEASON 1</h2>
+            <div class="bg-amber-500/20 text-amber-300 text-xs font-mono font-bold px-3 py-1 rounded-full border border-amber-500/40">
+                STATUS: COMING SOON
+            </div>
+            <p class="text-sm text-gray-300 max-w-sm">
+                Unlock 100 Tiers of Legendary Cyberpunk Outfits, Animated Gun Skins, Mythic Emotes, and exclusive Tactical Banners.
+            </p>
+            <button id="btn-close-rp" class="w-full py-3 bg-amber-600 hover:bg-amber-500 text-black font-heading text-2xl font-bold rounded-xl transition-all">
+                GOT IT
+            </button>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
+    <!-- INVENTORY / LOCKER CUSTOMIZATION MODAL                    -->
+    <!-- ========================================================= -->
+    <div id="modal-inventory" class="absolute top-0 left-0 w-full h-full z-30 flex items-center justify-center bg-black/80 backdrop-blur-md hidden pointer-events-auto select-none">
+        <div class="bg-gray-950/95 border border-cyan-500/40 p-8 rounded-3xl max-w-4xl w-full shadow-[0_0_60px_rgba(6,182,212,0.3)] flex flex-col gap-6 max-h-[85vh]">
+            <div class="flex justify-between items-center border-b border-cyan-500/30 pb-3">
+                <div>
+                    <h2 class="font-heading text-4xl font-black text-cyan-400 tracking-wider">TACTICAL LOCKER & WARDROBE</h2>
+                    <p class="text-xs text-gray-400">Equip Outfits, Dresses, and Weapon Skins in Real-Time</p>
+                </div>
+                <button id="btn-close-inventory" class="text-gray-400 hover:text-white text-2xl font-bold">✕</button>
+            </div>
+
+            <!-- Inventory Category Tabs -->
+            <div class="flex gap-4 border-b border-white/10 pb-3 font-heading text-2xl">
+                <button id="tab-inv-outfits" class="text-cyan-400 border-b-2 border-cyan-400 pb-1 font-bold">👗 OUTFITS & DRESSES</button>
+                <button id="tab-inv-guns" class="text-gray-400 hover:text-white pb-1 font-bold">🔫 WEAPON SKINS</button>
+            </div>
+
+            <!-- Outfits Grid -->
+            <div id="grid-inv-outfits" class="grid grid-cols-3 gap-4 overflow-y-auto pr-1">
+                <!-- Outfit 1 -->
+                <div class="inv-card equipped p-4 rounded-2xl flex flex-col items-center text-center gap-3 cursor-pointer" data-outfit="default">
+                    <div class="text-5xl">🛡️</div>
+                    <div>
+                        <h4 class="font-heading text-2xl font-bold text-white">Paladin Battle Armor</h4>
+                        <span class="text-xs font-bold text-amber-400 font-mono">EQUIPPED ✓</span>
+                    </div>
+                </div>
+                <!-- Outfit 2 -->
+                <div class="inv-card p-4 rounded-2xl flex flex-col items-center text-center gap-3 cursor-pointer" data-outfit="assassin">
+                    <div class="text-5xl">🥷</div>
+                    <div>
+                        <h4 class="font-heading text-2xl font-bold text-white">Shadow Assassin</h4>
+                        <span class="text-xs font-bold text-cyan-400 font-mono">CLICK TO EQUIP</span>
+                    </div>
+                </div>
+                <!-- Outfit 3 -->
+                <div class="inv-card p-4 rounded-2xl flex flex-col items-center text-center gap-3 cursor-pointer" data-outfit="vanguard">
+                    <div class="text-5xl">⚡</div>
+                    <div>
+                        <h4 class="font-heading text-2xl font-bold text-white">Neon Cyber Vanguard</h4>
+                        <span class="text-xs font-bold text-cyan-400 font-mono">CLICK TO EQUIP</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Gun Skins Grid -->
+            <div id="grid-inv-guns" class="grid grid-cols-3 gap-4 overflow-y-auto pr-1 hidden">
+                <div class="inv-card equipped p-4 rounded-2xl flex flex-col items-center text-center gap-3 cursor-pointer" data-gun="ak47">
+                    <div class="text-5xl">🔫</div>
+                    <div>
+                        <h4 class="font-heading text-2xl font-bold text-white">Military AK-47</h4>
+                        <span class="text-xs font-bold text-amber-400 font-mono">EQUIPPED ✓</span>
+                    </div>
+                </div>
+                <div class="inv-card p-4 rounded-2xl flex flex-col items-center text-center gap-3 cursor-pointer" data-gun="m4">
+                    <div class="text-5xl">🪖</div>
+                    <div>
+                        <h4 class="font-heading text-2xl font-bold text-white">M4 Carbine</h4>
+                        <span class="text-xs font-bold text-cyan-400 font-mono">CLICK TO EQUIP</span>
+                    </div>
+                </div>
+                <div class="inv-card p-4 rounded-2xl flex flex-col items-center text-center gap-3 cursor-pointer" data-gun="uzi">
+                    <div class="text-5xl">⚡</div>
+                    <div>
+                        <h4 class="font-heading text-2xl font-bold text-white">UZI Submachine</h4>
+                        <span class="text-xs font-bold text-cyan-400 font-mono">CLICK TO EQUIP</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================================= -->
     <!-- IN-GAME HUD                                               -->
     <!-- ========================================================= -->
     <div id="hud" class="absolute top-0 left-0 w-full h-full z-10 pointer-events-none hidden select-none">
-        
-        <!-- Top Header & Kill Feed -->
         <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start">
-            <!-- Balance & Mode -->
             <div class="flex gap-3 items-center">
                 <div class="bg-black/60 backdrop-blur-md px-5 py-2 rounded-xl border border-amber-500/40 flex items-center gap-2 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
                     <span class="text-xl">🪙</span>
-                    <span id="coin-display" class="font-heading font-bold text-2xl text-amber-400 tracking-wider">25,080</span>
+                    <span id="coin-display" class="font-heading font-bold text-2xl text-amber-400 tracking-wider">0</span>
                 </div>
                 <div class="bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/15 flex items-center gap-2">
                     <span id="hud-room-code" class="font-mono font-bold text-cyan-400 text-xs">SOLO MATCH</span>
                 </div>
             </div>
-
-            <!-- Kill Feed Notifications -->
             <div id="kill-feed" class="flex flex-col gap-2 items-end max-w-sm"></div>
         </div>
 
-        <!-- Dynamic Expanding Crosshair -->
         <div id="crosshair" class="crosshair-container">
             <div class="crosshair-center"></div>
             <div class="crosshair-line crosshair-top"></div>
@@ -166,7 +338,6 @@
             <div class="crosshair-line crosshair-right"></div>
         </div>
 
-        <!-- Bottom Left: Health & Armor -->
         <div class="absolute bottom-8 left-8 flex flex-col gap-2 bg-black/70 backdrop-blur-md p-4 rounded-2xl border border-white/15 w-72 shadow-2xl">
             <div class="flex justify-between text-xs font-bold text-gray-300">
                 <span>HEALTH</span>
@@ -185,9 +356,7 @@
             </div>
         </div>
 
-        <!-- Bottom Right: Ammo Counter & Weapon HUD -->
         <div class="absolute bottom-8 right-8 flex flex-col gap-2 items-end">
-            <!-- Weapon Name & Ammo Box -->
             <div class="ammo-box p-4 rounded-2xl flex flex-col gap-2 w-56 shadow-2xl">
                 <div class="flex justify-between items-center">
                     <span id="hud-weapon-name" class="font-heading font-black text-2xl text-white tracking-wider">AK-47</span>
@@ -203,48 +372,14 @@
                     <span id="ammo-state-label" class="text-xs font-bold text-gray-400 uppercase tracking-widest">READY</span>
                 </div>
 
-                <!-- Reload Progress Bar -->
                 <div id="reload-bar-container" class="reload-progress-bar mt-1 hidden">
                     <div id="reload-bar-fill" class="reload-progress-fill"></div>
                 </div>
             </div>
         </div>
 
-        <!-- Buy Menu Center Prompt -->
         <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-md px-6 py-2 rounded-xl border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
-            <span class="text-emerald-300 text-xs font-bold tracking-wide">Press <kbd class="bg-emerald-950 px-2 py-0.5 rounded text-emerald-400 font-mono border border-emerald-500/50">B</kbd> for Tactical Armory</span>
-        </div>
-    </div>
-
-    <!-- ========================================================= -->
-    <!-- TAB SCOREBOARD MODAL                                      -->
-    <!-- ========================================================= -->
-    <div id="scoreboard-modal" class="absolute top-0 left-0 w-full h-full z-30 flex items-center justify-center bg-black/75 backdrop-blur-md hidden pointer-events-none select-none">
-        <div class="bg-gray-950/90 border border-cyan-500/40 p-6 rounded-3xl max-w-2xl w-full shadow-[0_0_50px_rgba(6,182,212,0.3)]">
-            <div class="flex justify-between items-center border-b border-cyan-500/30 pb-3 mb-4">
-                <h2 class="font-heading text-3xl font-black text-white tracking-wider">MATCH SCOREBOARD</h2>
-                <span class="text-xs font-mono text-cyan-400 font-bold">CYBERPUNK ARENA TDM</span>
-            </div>
-            <table class="w-full text-left text-sm">
-                <thead>
-                    <tr class="text-gray-400 border-b border-white/10 font-mono text-xs">
-                        <th class="pb-2">PLAYER</th>
-                        <th class="pb-2">STATUS</th>
-                        <th class="pb-2">KILLS</th>
-                        <th class="pb-2">DAMAGE</th>
-                        <th class="pb-2">PING</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-white/5 font-bold">
-                    <tr class="text-amber-400">
-                        <td class="py-2.5 flex items-center gap-2"><span>👑</span> Commander (You)</td>
-                        <td><span class="text-green-400">ALIVE</span></td>
-                        <td id="sb-kills">0</td>
-                        <td id="sb-damage">0</td>
-                        <td class="font-mono text-xs text-gray-400">12ms</td>
-                    </tr>
-                </tbody>
-            </table>
+            <span class="text-emerald-300 text-xs font-bold tracking-wide">Press <kbd class="bg-emerald-950 px-2 py-0.5 rounded text-emerald-400 font-mono border border-emerald-500/50">B</kbd> for In-Match Tactical Armory</span>
         </div>
     </div>
 
@@ -262,7 +397,7 @@
                 <div class="text-3xl">⚔️</div>
                 <div>
                     <h3 class="font-heading text-2xl font-bold text-white">SOLO ARENA</h3>
-                    <p class="text-xs text-gray-400">Jump right into the Cyberpunk Combat Arena with full weapons.</p>
+                    <p class="text-xs text-gray-400">Jump right into the Cyberpunk Combat Arena.</p>
                 </div>
             </button>
 
@@ -270,7 +405,7 @@
                 <div class="text-3xl">📡</div>
                 <div>
                     <h3 class="font-heading text-2xl font-bold text-white">CREATE P2P ROOM (HOST)</h3>
-                    <p class="text-xs text-gray-400">Host a multiplayer server and share your room code with friends.</p>
+                    <p class="text-xs text-gray-400">Host a multiplayer server with room code.</p>
                 </div>
             </button>
 
@@ -293,13 +428,12 @@
     </div>
 
     <!-- ========================================================= -->
-    <!-- CS:GO TACTICAL 5-COLUMN BUY MENU                          -->
+    <!-- CS:GO TACTICAL 5-COLUMN BUY MENU (IN-GAME ONLY)           -->
     <!-- ========================================================= -->
     <div id="shop-menu" class="absolute top-0 left-0 w-full h-full z-40 flex flex-col justify-between bg-black/90 cs-scanlines backdrop-blur-lg hidden pointer-events-auto p-6 select-none">
-        
         <div class="w-full flex justify-between items-center border-b border-emerald-500/30 pb-4">
             <div class="flex items-center gap-6">
-                <h2 class="font-heading text-4xl font-black text-emerald-400 tracking-wider">TACTICAL ARMORY</h2>
+                <h2 class="font-heading text-4xl font-black text-emerald-400 tracking-wider">TACTICAL IN-GAME ARMORY</h2>
                 <div class="bg-emerald-950/80 border border-emerald-500/40 px-4 py-1.5 rounded-lg flex items-center gap-2">
                     <span class="text-xs text-gray-400 uppercase font-bold tracking-widest">Buy Time:</span>
                     <span id="buy-timer" class="font-mono font-bold text-emerald-400 text-lg">00:30</span>
@@ -308,8 +442,8 @@
 
             <div class="flex items-center gap-6">
                 <div class="flex items-center gap-2 font-heading text-3xl font-bold text-amber-400">
-                    <span class="text-gray-400 text-xl">FUNDS:</span>
-                    <span>$ <span id="shop-coins">25,080</span></span>
+                    <span class="text-gray-400 text-xl">MATCH FUNDS:</span>
+                    <span>$ <span id="shop-coins">0</span></span>
                 </div>
                 <button id="btn-close-shop" class="px-5 py-2 bg-emerald-950 hover:bg-emerald-900 border border-emerald-500/50 rounded-xl font-heading text-xl font-bold text-emerald-300 transition-all">
                     CLOSE [ESC]
@@ -317,7 +451,6 @@
             </div>
         </div>
 
-        <!-- 5 Columns + Inspector -->
         <div class="flex-grow grid grid-cols-12 gap-4 py-4 overflow-y-auto">
             <div class="col-span-2 flex flex-col gap-2">
                 <div class="font-heading text-xl font-bold text-emerald-400 tracking-wider border-b border-emerald-500/30 pb-1">1 Equipment</div>
@@ -340,7 +473,6 @@
                 <div class="flex flex-col gap-2" id="col-grenades"></div>
             </div>
 
-            <!-- Inspector -->
             <div class="col-span-2 bg-emerald-950/60 border border-emerald-500/40 rounded-2xl p-4 flex flex-col justify-between shadow-[0_0_25px_rgba(16,185,129,0.15)]">
                 <div>
                     <div class="w-full h-28 bg-black/60 rounded-xl border border-emerald-500/30 flex items-center justify-center text-5xl mb-3 shadow-inner">
@@ -393,17 +525,11 @@
                 </button>
             </div>
         </div>
-
-        <div class="w-full flex justify-between items-center text-xs font-bold text-emerald-400/70 border-t border-emerald-500/30 pt-3">
-            <span>KEYBOARD SHORTCUTS: 1-5 TO NAVIGATE • CLICK TO PURCHASE</span>
-            <span>PRESS [B] TO CLOSE</span>
-        </div>
     </div>
 
     <!-- PeerJS for P2P Multiplayer -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     
-    <!-- Import Map for Three.js & Cannon-es -->
     <script type="importmap">
         {
             "imports": {
@@ -414,7 +540,6 @@
         }
     </script>
 
-    <!-- Main Game Script -->
     <script type="module" src="main.js"></script>
 </body>
 </html>
