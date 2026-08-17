@@ -26,12 +26,56 @@ let health = 100;
 let maxHealth = 100;
 let armor = 0;
 let maxArmor = 100;
+let isCrouched = false;
 
 // Networking
-let peer, conn;
+let peer = null;
+let conn = null;
 const networkPlayers = {};
-let lastNetTick = 0;
-const netTickRate = 0.05;
+
+function initPeerConnection(isHost, roomCode) {
+    try {
+        if (typeof Peer === 'undefined') return;
+        if (peer) {
+            try { peer.destroy(); } catch (e) {}
+        }
+
+        const peerId = isHost ? `arena-host-${roomCode}` : `arena-client-${Math.random().toString(36).substring(2, 7)}`;
+        peer = new Peer(peerId);
+
+        peer.on('open', (id) => {
+            console.log('Peer connected with ID:', id);
+            if (!isHost && roomCode) {
+                conn = peer.connect(`arena-host-${roomCode}`);
+                setupConnectionHandlers(conn);
+            }
+        });
+
+        peer.on('connection', (c) => {
+            conn = c;
+            setupConnectionHandlers(conn);
+        });
+
+        peer.on('error', (err) => {
+            console.warn('PeerJS notice (falling back to local session):', err);
+        });
+    } catch (err) {
+        console.warn('Networking fallback:', err);
+    }
+}
+
+function setupConnectionHandlers(connection) {
+    connection.on('open', () => {
+        console.log('P2P Connection Established!');
+        addKillFeed('Network Player Joined the Arena');
+    });
+
+    connection.on('data', (data) => {
+        if (data.type === 'shoot') {
+            vfxManager.createImpact(data.hitPoint, new THREE.Vector3(0, 1, 0), 'flesh');
+        }
+    });
+}
 
 // Audio System
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -421,15 +465,12 @@ function throwGrenade() {
     gameState.grenadesCount--;
     playSound('grenade_pin');
 
-    // 1. Move rifle to back holster
     weaponSystem.holsterToBack();
 
-    // 2. Play toss animation
     if (animActions.toss) {
         playAnimation('toss', 0.1, false);
     }
 
-    // 3. Attach grenade in right hand during throw windup
     let handGrenade = grenadeTemplate ? grenadeTemplate.clone() : new THREE.Mesh(
         new THREE.SphereGeometry(0.12, 8, 8),
         new THREE.MeshStandardMaterial({ color: 0x166534 })
@@ -438,7 +479,6 @@ function throwGrenade() {
     handGrenade.position.set(0, 5, 5);
     if (playerRightHandBone) playerRightHandBone.add(handGrenade);
 
-    // 4. Release projectile along camera forward arc
     setTimeout(() => {
         if (playerRightHandBone && handGrenade.parent === playerRightHandBone) {
             playerRightHandBone.remove(handGrenade);
@@ -479,7 +519,6 @@ function throwGrenade() {
         });
     }, 550);
 
-    // 5. Draw gun back to hands after throw completes
     setTimeout(() => {
         weaponSystem.drawToHands();
         isThrowingGrenade = false;
@@ -532,8 +571,10 @@ class ReloadSystem {
         gameState.state = 'RELOADING';
 
         document.getElementById('reload-bar-container').classList.remove('hidden');
-        document.getElementById('ammo-state-label').innerText = 'RELOADING...';
-        document.getElementById('ammo-state-label').className = 'text-xs font-bold text-amber-400 uppercase tracking-widest animate-pulse';
+        if (document.getElementById('ammo-state-label')) {
+            document.getElementById('ammo-state-label').innerText = 'RELOADING...';
+            document.getElementById('ammo-state-label').className = 'text-xs font-bold text-amber-400 uppercase tracking-widest animate-pulse';
+        }
 
         if (animActions.reload) playAnimation('reload', 0.15, false);
         playSound('reload_mag_out');
@@ -562,8 +603,10 @@ class ReloadSystem {
         weapon.reserve -= toLoad;
 
         document.getElementById('reload-bar-container').classList.add('hidden');
-        document.getElementById('ammo-state-label').innerText = 'READY';
-        document.getElementById('ammo-state-label').className = 'text-xs font-bold text-gray-400 uppercase tracking-widest';
+        if (document.getElementById('ammo-state-label')) {
+            document.getElementById('ammo-state-label').innerText = 'READY';
+            document.getElementById('ammo-state-label').className = 'text-xs font-bold text-gray-400 uppercase tracking-widest';
+        }
 
         updateHUD();
     }
@@ -621,7 +664,7 @@ class WeaponSystem {
         if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
 
         // Perfectly aligned inside SWAT right hand fingers aiming forward
-        this.mesh.position.set(-2.0, 9.5, 3.5);
+        this.mesh.position.set(-1.0, 8.2, 3.2);
         this.mesh.rotation.set(-Math.PI / 2, Math.PI / 2, 0);
 
         if (playerRightHandBone) {
@@ -810,7 +853,7 @@ async function loadCharacter() {
                 child.receiveShadow = true;
 
                 const name = (child.name || '').toLowerCase();
-                let color = 0x242d3d; // Tactical SWAT Charcoal
+                let color = 0x242d3d;
                 let roughness = 0.5;
                 let metalness = 0.2;
 
@@ -1047,7 +1090,7 @@ window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
     if (k in keys) keys[k] = true;
     if (e.shiftKey) keys.shift = true;
-    if (e.ctrlKey) keys.ctrl = true;
+    if (e.ctrlKey || k === 'c') isCrouched = !isCrouched;
     if (e.code === 'Space') keys.space = true;
 
     if (k === 'g' && gameState.inGame) {
@@ -1067,7 +1110,6 @@ window.addEventListener('keyup', (e) => {
     const k = e.key.toLowerCase();
     if (k in keys) keys[k] = false;
     if (!e.shiftKey) keys.shift = false;
-    if (!e.ctrlKey) keys.ctrl = false;
     if (e.code === 'Space') keys.space = false;
 });
 
@@ -1191,7 +1233,7 @@ window.addEventListener('touchstart', (e) => {
         const touch = e.changedTouches[i];
         if (touch.clientX > window.innerWidth * 0.4 && lookTouchId === null) {
             const target = document.elementFromPoint(touch.clientX, touch.clientY);
-            if (!target || !target.closest('.touch-btn')) {
+            if (!target || !target.closest('.touch-btn') && !target.closest('#btn-hud-reload')) {
                 lookTouchId = touch.identifier;
                 lastLookTouch = { x: touch.clientX, y: touch.clientY };
             }
@@ -1264,12 +1306,34 @@ if (btnTouchJump) {
     }, { passive: false });
 }
 
+const btnTouchCrouch = document.getElementById('btn-touch-crouch');
+if (btnTouchCrouch) {
+    btnTouchCrouch.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        isCrouched = !isCrouched;
+        btnTouchCrouch.classList.toggle('bg-amber-400', isCrouched);
+    }, { passive: false });
+}
+
 const btnTouchReload = document.getElementById('btn-touch-reload');
 if (btnTouchReload) {
     btnTouchReload.addEventListener('touchstart', (e) => {
         e.preventDefault();
         reloadSystem.startReload(weaponSystem.current);
     }, { passive: false });
+}
+
+const btnHudReload = document.getElementById('btn-hud-reload');
+if (btnHudReload) {
+    btnHudReload.addEventListener('click', (e) => {
+        e.stopPropagation();
+        reloadSystem.startReload(weaponSystem.current);
+    });
+    btnHudReload.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        reloadSystem.startReload(weaponSystem.current);
+    });
 }
 
 const btnTouchGrenade = document.getElementById('btn-touch-grenade');
@@ -1390,7 +1454,7 @@ document.querySelectorAll('#grid-inv-guns .inv-card').forEach(card => {
     });
 });
 
-// Mode Selector
+// Mode Selector (Solo, Host, Join)
 const modalModeSelect = document.getElementById('modal-mode-select');
 document.getElementById('btn-open-mode-modal').addEventListener('click', () => modalModeSelect.classList.remove('hidden'));
 document.getElementById('mode-badge-card').addEventListener('click', () => modalModeSelect.classList.remove('hidden'));
@@ -1399,6 +1463,10 @@ document.getElementById('btn-close-mode-modal').addEventListener('click', () => 
 document.getElementById('mode-opt-solo').addEventListener('click', () => {
     gameState.selectedMode = 'SOLO';
     gameState.roomCode = 'SOLO';
+    gameState.isHost = false;
+    document.getElementById('current-mode-tag').innerText = 'EvoGround (TPP) • SOLO';
+    document.getElementById('current-mode-desc').innerText = 'Selected: Arena Metropolis';
+    document.getElementById('hud-room-code').innerText = 'SOLO MATCH';
     modalModeSelect.classList.add('hidden');
 });
 
@@ -1407,8 +1475,29 @@ document.getElementById('mode-opt-host').addEventListener('click', () => {
     gameState.selectedMode = 'HOST';
     gameState.isHost = true;
     gameState.roomCode = code;
+    document.getElementById('current-mode-tag').innerText = `HOST ROOM [${code}]`;
+    document.getElementById('current-mode-desc').innerText = `Share Code: ${code}`;
+    document.getElementById('hud-room-code').innerText = `HOST • ${code}`;
     modalModeSelect.classList.add('hidden');
+    initPeerConnection(true, code);
 });
+
+const btnModalJoin = document.getElementById('btn-modal-join');
+if (btnModalJoin) {
+    btnModalJoin.addEventListener('click', () => {
+        const input = document.getElementById('modal-input-code');
+        const code = input.value.trim().toUpperCase();
+        if (!code) return;
+        gameState.selectedMode = 'CLIENT';
+        gameState.isHost = false;
+        gameState.roomCode = code;
+        document.getElementById('current-mode-tag').innerText = `JOIN ROOM [${code}]`;
+        document.getElementById('current-mode-desc').innerText = `Connected: ${code}`;
+        document.getElementById('hud-room-code').innerText = `CLIENT • ${code}`;
+        modalModeSelect.classList.add('hidden');
+        initPeerConnection(false, code);
+    });
+}
 
 function requestLandscapeAndFullscreen() {
     try {
@@ -1422,6 +1511,9 @@ function requestLandscapeAndFullscreen() {
         }
     } catch (e) {}
 }
+
+document.addEventListener('touchstart', requestLandscapeAndFullscreen, { passive: true });
+document.addEventListener('click', requestLandscapeAndFullscreen, { passive: true });
 
 document.getElementById('btn-pubg-start').addEventListener('click', () => {
     requestLandscapeAndFullscreen();
@@ -1562,9 +1654,8 @@ function updatePlayerPhysics(delta, time) {
         playerBody.velocity.set(0, 0, 0);
     }
 
-    const isSprinting = keys.shift && !keys.ctrl;
-    const isCrouching = keys.ctrl;
-    const speed = isSprinting ? sprintSpeed : (isCrouching ? walkSpeed * 0.5 : walkSpeed);
+    const isSprinting = keys.shift && !isCrouched;
+    const speed = isSprinting ? sprintSpeed : (isCrouched ? walkSpeed * 0.45 : walkSpeed);
 
     // Direction calculation in local movement space
     let moveForward = 0;
@@ -1645,9 +1736,9 @@ function updatePlayerPhysics(delta, time) {
         );
     }
 
-    // Third-person Orbit Camera
+    // Third-person Orbit Camera with Crouch Height adjustment
     const orbitDist = weaponSystem.isADS ? 2.2 : 3.8;
-    const yOffset = weaponSystem.isADS ? 1.35 : 1.45;
+    const yOffset = weaponSystem.isADS ? (isCrouched ? 0.95 : 1.35) : (isCrouched ? 1.05 : 1.45);
 
     const camX = playerBody.position.x + orbitDist * Math.sin(cameraYaw) * Math.cos(cameraPitch);
     const camY = playerBody.position.y + yOffset + orbitDist * Math.sin(cameraPitch);

@@ -16,7 +16,7 @@
     <meta name="apple-mobile-web-app-title" content="ArenaCombat">
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css?v=8.0">
+    <link rel="stylesheet" href="style.css?v=9.0">
 </head>
 <body class="bg-[#050811] overflow-hidden text-white font-sans">
     
@@ -392,7 +392,10 @@
                         <span class="text-gray-500 text-lg">/</span>
                         <span id="ammo-reserve" class="ammo-max font-heading text-2xl font-bold">90</span>
                     </div>
-                    <span id="ammo-state-label" class="text-xs font-bold text-gray-400 uppercase tracking-widest">READY</span>
+                    <button id="btn-hud-reload" class="px-2.5 py-1 bg-cyan-950/80 hover:bg-cyan-800 border border-cyan-500/40 rounded-lg text-xs font-bold text-cyan-300 pointer-events-auto flex items-center gap-1 cursor-pointer transition-all active:scale-95 shadow-md">
+                        <span>🔄</span>
+                        <span>RELOAD [R]</span>
+                    </button>
                 </div>
 
                 <div id="reload-bar-container" class="reload-progress-bar mt-1 hidden">
@@ -402,7 +405,7 @@
         </div>
 
         <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-md px-6 py-2 rounded-xl border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)] hidden md:block">
-            <span class="text-emerald-300 text-xs font-bold tracking-wide">Press <kbd class="bg-emerald-950 px-2 py-0.5 rounded text-emerald-400 font-mono border border-emerald-500/50">B</kbd> for In-Match Tactical Armory</span>
+            <span class="text-emerald-300 text-xs font-bold tracking-wide">Press <kbd class="bg-emerald-950 px-2 py-0.5 rounded text-emerald-400 font-mono border border-emerald-500/50">B</kbd> for Armory • <kbd class="bg-emerald-950 px-2 py-0.5 rounded text-emerald-400 font-mono border border-emerald-500/50">C</kbd> to Crouch</span>
         </div>
 
         <!-- Mobile On-Screen Touch Controls Overlay -->
@@ -423,8 +426,9 @@
                     <button id="btn-touch-reload" class="touch-btn touch-btn-sub text-white text-xl" title="Reload (R)">🔄</button>
                 </div>
 
-                <!-- Main Action Buttons -->
+                <!-- Main Action Buttons (Crouch, Jump, ADS, Fire) -->
                 <div class="flex items-center gap-3">
+                    <button id="btn-touch-crouch" class="touch-btn touch-btn-jump text-white text-2xl font-bold bg-amber-600/80" title="Crouch (C)">🧎</button>
                     <button id="btn-touch-jump" class="touch-btn touch-btn-jump text-white text-2xl font-bold" title="Jump (Space)">🦘</button>
                     <button id="btn-touch-ads" class="touch-btn touch-btn-ads text-white text-2xl font-bold" title="ADS Scope">🔍</button>
                     <button id="btn-touch-fire" class="touch-btn touch-btn-fire text-white text-3xl font-bold" title="Fire">🔥</button>
@@ -590,7 +594,7 @@
         }
     </script>
 
-    <script type="module" src="main.js?v=8.0"></script>
+    <script type="module" src="main.js?v=9.0"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>
