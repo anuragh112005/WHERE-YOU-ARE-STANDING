@@ -11,7 +11,7 @@ body {
     user-select: none;
     -webkit-user-select: none;
     font-family: 'Rajdhani', 'Inter', sans-serif;
-    background-color: #0b0e14;
+    background-color: #050811;
 }
 
 .font-heading {
@@ -30,33 +30,45 @@ canvas {
     height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: rgba(10, 15, 25, 0.9); 
+    background: rgba(5, 8, 17, 0.9); 
 }
 ::-webkit-scrollbar-thumb {
-    background: rgba(16, 185, 129, 0.4); 
+    background: rgba(6, 182, 212, 0.4); 
     border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(16, 185, 129, 0.8); 
+    background: rgba(6, 182, 212, 0.8); 
 }
 
-/* Fortnite Yellow PLAY Button Glow */
-.btn-fortnite-play {
-    background: linear-gradient(180deg, #facc15 0%, #eab308 50%, #ca8a04 100%);
-    box-shadow: 0 0 35px rgba(250, 204, 21, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(0, 0, 0, 0.3);
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
-    transform-origin: center;
+/* Golden PUBG-style START Button */
+.btn-pubg-start {
+    background: linear-gradient(180deg, #f59e0b 0%, #d97706 50%, #b45309 100%);
+    box-shadow: 0 0 25px rgba(245, 158, 11, 0.6), inset 0 2px 0 rgba(255, 255, 255, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.4);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
     transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.btn-fortnite-play:hover {
+.btn-pubg-start:hover {
     transform: scale(1.03) translateY(-2px);
-    box-shadow: 0 0 50px rgba(250, 204, 21, 0.8), inset 0 2px 0 rgba(255, 255, 255, 0.8);
-    background: linear-gradient(180deg, #fde047 0%, #facc15 50%, #d97706 100%);
+    box-shadow: 0 0 40px rgba(245, 158, 11, 0.9), inset 0 2px 0 rgba(255, 255, 255, 0.8);
+    background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
 }
 
-.btn-fortnite-play:active {
+.btn-pubg-start:active {
     transform: scale(0.98) translateY(1px);
+}
+
+/* Holographic Cyberpunk Card */
+.holo-panel {
+    background: linear-gradient(135deg, rgba(6, 25, 45, 0.75) 0%, rgba(2, 12, 25, 0.88) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.35);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 15px rgba(6, 182, 212, 0.1);
+    backdrop-filter: blur(12px);
+}
+
+.holo-panel:hover {
+    border-color: rgba(56, 189, 248, 0.7);
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.35), inset 0 0 20px rgba(6, 182, 212, 0.15);
 }
 
 /* CS:GO Card Styling */
@@ -79,20 +91,36 @@ canvas {
     background: linear-gradient(135deg, rgba(20, 95, 65, 0.98) 0%, rgba(10, 50, 35, 1) 100%);
 }
 
-.cs-card.locked {
-    opacity: 0.45;
-    filter: grayscale(0.6);
-}
-
-/* CS:GO scanlines */
+/* Scanlines Effect */
 .cs-scanlines {
     background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
     background-size: 100% 4px;
 }
 
-/* Tab Active Indicator */
-.lobby-tab.active {
-    border-bottom: 3px solid #38bdf8;
+/* Bottom Bar Nav Item */
+.bottom-nav-item {
+    color: #94a3b8;
+    position: relative;
+    transition: all 0.2s ease;
+}
+
+.bottom-nav-item:hover, .bottom-nav-item.active {
     color: #ffffff;
-    text-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+}
+
+.bottom-nav-item::after {
+    content: '';
+    position: absolute;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 2px;
+    background: #f59e0b;
+    transition: width 0.2s ease;
+}
+
+.bottom-nav-item:hover::after, .bottom-nav-item.active::after {
+    width: 80%;
 }

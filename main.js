@@ -7,19 +7,20 @@ import * as CANNON from 'cannon-es';
 // GAME STATE & STATS
 // ==========================================
 const gameState = {
-    coins: 800,
+    coins: 25080,
+    uc: 85061,
     isHost: false,
     roomCode: 'SOLO',
     inGame: false,
     isShopOpen: false,
-    selectedMode: 'SOLO' // 'SOLO', 'HOST', 'JOIN'
+    selectedMode: 'SOLO'
 };
 
 let health = 100;
 let maxHealth = 100;
 let armor = 0;
 let maxArmor = 100;
-let weaponDamage = 30;
+let weaponDamage = 32;
 
 // Networking
 let peer, conn;
@@ -36,16 +37,17 @@ const keys = {
 // Player & Camera Variables
 let playerBody, playerMesh;
 let lobbyPedestal;
+let lobbyBackgroundMesh;
+let playerFeetOffsetY = 0;
+let paladinLimbs = { rightArm: [], leftArm: [], rightLeg: [], leftLeg: [], torso: [] };
+
 let cameraYaw = 0;
 let cameraPitch = 0;
-const walkSpeed = 5;
-const sprintSpeed = 9;
-const jumpVelocity = 6;
+const walkSpeed = 5.5;
+const sprintSpeed = 9.5;
+const jumpVelocity = 6.5;
 let isCrouching = false;
 let colorIndex = Math.floor(Math.random() * 0xffffff);
-
-let playerBones = {};
-let playerRightHand = null;
 
 // ==========================================
 // COMPREHENSIVE SHOP & WEAPONS CATALOG
@@ -86,7 +88,7 @@ let shootCooldown = 0;
 let shootRate = 0.16;
 let recoilOffset = 0;
 
-const WEAPON_HAND_POS = new THREE.Vector3(0.38, 0.50, 0.10);
+const WEAPON_HAND_POS = new THREE.Vector3(0.28, 0.95, 0.25);
 
 // ==========================================
 // WEB AUDIO API SOUND SYSTEM
@@ -105,16 +107,14 @@ function playSound(type) {
     const now = audioCtx.currentTime;
 
     if (type === 'buy') {
-        // Cash register chime
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(587.33, now); // D5
-        osc.frequency.setValueAtTime(880, now + 0.08); // A5
+        osc.frequency.setValueAtTime(587.33, now);
+        osc.frequency.setValueAtTime(880, now + 0.08);
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
         osc.start(now);
         osc.stop(now + 0.35);
     } else if (type === 'error') {
-        // Low error buzz
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(140, now);
         gain.gain.setValueAtTime(0.2, now);
@@ -122,7 +122,6 @@ function playSound(type) {
         osc.start(now);
         osc.stop(now + 0.25);
     } else if (type === 'equip') {
-        // Mechanical click
         osc.type = 'square';
         osc.frequency.setValueAtTime(320, now);
         osc.frequency.setValueAtTime(640, now + 0.04);
@@ -131,7 +130,6 @@ function playSound(type) {
         osc.start(now);
         osc.stop(now + 0.15);
     } else if (type === 'shoot') {
-        // Punchy gunshot pop
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(220, now);
         osc.frequency.exponentialRampToValueAtTime(40, now + 0.12);
@@ -162,21 +160,21 @@ const btnCloseShop = document.getElementById('btn-close-shop');
 // Modal Elements
 const modalModeSelect = document.getElementById('modal-mode-select');
 const btnOpenModeModal = document.getElementById('btn-open-mode-modal');
-const btnChangeMode = document.getElementById('btn-change-mode');
+const modeBadgeCard = document.getElementById('mode-badge-card');
 const btnCloseModeModal = document.getElementById('btn-close-mode-modal');
 const modeOptSolo = document.getElementById('mode-opt-solo');
 const modeOptHost = document.getElementById('mode-opt-host');
 const btnModalJoin = document.getElementById('btn-modal-join');
 const modalInputCode = document.getElementById('modal-input-code');
-const currentModeTitle = document.getElementById('current-mode-title');
+const currentModeTag = document.getElementById('current-mode-tag');
+const currentModeDesc = document.getElementById('current-mode-desc');
 const lobbyRoomCodeTag = document.getElementById('lobby-room-code-tag');
-const btnFortnitePlayAction = document.getElementById('btn-fortnite-play-action');
-const lobbyStatusText = document.getElementById('lobby-status-text');
+const btnPubgStart = document.getElementById('btn-pubg-start');
 
 function updateHUD() {
-    coinDisplay.innerText = gameState.coins;
-    lobbyCoins.innerText = gameState.coins;
-    shopCoins.innerText = gameState.coins;
+    coinDisplay.innerText = gameState.coins.toLocaleString();
+    lobbyCoins.innerText = gameState.coins.toLocaleString();
+    shopCoins.innerText = gameState.coins.toLocaleString();
 
     healthValue.innerText = Math.max(0, Math.round(health));
     healthBarFill.style.width = Math.max(0, (health / maxHealth) * 100) + '%';
@@ -205,11 +203,11 @@ renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x0a111c); // Dark lobby sky
-scene.fog = new THREE.FogExp2(0x0a111c, 0.012);
+scene.background = new THREE.Color(0x050811);
+scene.fog = new THREE.FogExp2(0x050811, 0.015);
 
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.set(0, 2, 4);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 1.4, 3.2);
 
 const world = new CANNON.World({
     gravity: new CANNON.Vec3(0, -9.81, 0)
@@ -217,18 +215,22 @@ const world = new CANNON.World({
 const timeStep = 1 / 60;
 
 // Lighting
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.4);
-dirLight.position.set(30, 80, 40);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+dirLight.position.set(20, 50, 30);
 dirLight.castShadow = true;
 scene.add(dirLight);
 
-// Sci-Fi Lobby Spotlights & Pedestal Glow
-const lobbySpot = new THREE.SpotLight(0x38bdf8, 4, 25, Math.PI / 4, 0.5);
-lobbySpot.position.set(0, 8, 3);
-scene.add(lobbySpot);
+// Sci-Fi Cyan & Amber Rim Lights for Cyberpunk Combat Deck
+const cyanRimLight = new THREE.PointLight(0x06b6d4, 3, 20);
+cyanRimLight.position.set(-3, 3, -2);
+scene.add(cyanRimLight);
+
+const amberRimLight = new THREE.PointLight(0xf59e0b, 2.5, 20);
+amberRimLight.position.set(3, 2, 2);
+scene.add(amberRimLight);
 
 // Loaders
 const gltfLoader = new GLTFLoader();
@@ -243,48 +245,59 @@ window.addEventListener('resize', () => {
 });
 
 // ==========================================
-// 3D LOBBY PEDESTAL SETUP
+// 3D CYBERPUNK COMBAT DECK SETUP
 // ==========================================
-function buildLobbyPedestal() {
+function buildLobbyCombatDeck() {
     lobbyPedestal = new THREE.Group();
 
-    // Base cylinder
-    const baseGeo = new THREE.CylinderGeometry(2, 2.2, 0.3, 32);
-    const baseMat = new THREE.MeshStandardMaterial({
-        color: 0x111827,
-        roughness: 0.4,
-        metalness: 0.8
-    });
-    const baseMesh = new THREE.Mesh(baseGeo, baseMat);
-    baseMesh.position.y = -0.15;
-    lobbyPedestal.add(baseMesh);
-
-    // Glowing Cyan Outer Ring
-    const ringGeo = new THREE.TorusGeometry(1.9, 0.06, 16, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8 });
-    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.rotation.x = Math.PI / 2;
-    ringMesh.position.y = 0.02;
-    lobbyPedestal.add(ringMesh);
-
-    // Inner Glowing Disc
-    const discGeo = new THREE.CircleGeometry(1.7, 32);
-    const discMat = new THREE.MeshBasicMaterial({
-        color: 0x0369a1,
+    // 1. Transparent glass floor deck
+    const deckGeo = new THREE.CylinderGeometry(2.4, 2.6, 0.25, 48);
+    const deckMat = new THREE.MeshStandardMaterial({
+        color: 0x0f172a,
+        roughness: 0.2,
+        metalness: 0.9,
         transparent: true,
-        opacity: 0.7
+        opacity: 0.95
     });
-    const discMesh = new THREE.Mesh(discGeo, discMat);
-    discMesh.rotation.x = -Math.PI / 2;
-    discMesh.position.y = 0.01;
-    lobbyPedestal.add(discMesh);
+    const deckMesh = new THREE.Mesh(deckGeo, deckMat);
+    deckMesh.position.y = -0.13;
+    lobbyPedestal.add(deckMesh);
+
+    // 2. Glowing Cyan Neon Rim Ring
+    const neonRingGeo = new THREE.TorusGeometry(2.35, 0.05, 16, 64);
+    const neonRingMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4 });
+    const neonRing = new THREE.Mesh(neonRingGeo, neonRingMat);
+    neonRing.rotation.x = Math.PI / 2;
+    neonRing.position.y = 0.01;
+    lobbyPedestal.add(neonRing);
+
+    // 3. Inner Amber Hologram Ring
+    const innerRingGeo = new THREE.TorusGeometry(1.5, 0.03, 16, 48);
+    const innerRingMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+    const innerRing = new THREE.Mesh(innerRingGeo, innerRingMat);
+    innerRing.rotation.x = Math.PI / 2;
+    innerRing.position.y = 0.02;
+    lobbyPedestal.add(innerRing);
+
+    // 4. Background Backdrop Hemisphere (Cyberpunk Metropolis View)
+    texLoader.load('./lobby_background.jpg', (tex) => {
+        tex.colorSpace = THREE.SRGBColorSpace;
+        const bgGeo = new THREE.SphereGeometry(25, 32, 16);
+        const bgMat = new THREE.MeshBasicMaterial({
+            map: tex,
+            side: THREE.BackSide
+        });
+        lobbyBackgroundMesh = new THREE.Mesh(bgGeo, bgMat);
+        lobbyBackgroundMesh.rotation.y = -Math.PI / 4;
+        scene.add(lobbyBackgroundMesh);
+    });
 
     scene.add(lobbyPedestal);
 }
-buildLobbyPedestal();
+buildLobbyCombatDeck();
 
 // ==========================================
-// INPUT HANDLING & POINTER LOCK
+// INPUT HANDLING & COMBAT CONTROLS
 // ==========================================
 window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
@@ -295,9 +308,7 @@ window.addEventListener('keydown', (e) => {
 
     // Toggle Buy Menu with 'B'
     if (k === 'b') {
-        if (gameState.inGame) {
-            toggleShop();
-        }
+        toggleShop();
     }
 
     // Number shortcuts in buy menu (1 - 5)
@@ -344,7 +355,6 @@ function shoot() {
 
     playSound('shoot');
 
-    // Raycast from camera center
     raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
     const intersects = raycaster.intersectObjects(scene.children, true).filter(
         i => i.object !== playerMesh && !playerMesh.children.includes(i.object)
@@ -353,7 +363,6 @@ function shoot() {
     if (intersects.length > 0) {
         const hit = intersects[0];
         
-        // Spawn impact spark VFX
         const sparkGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
         const sparkMat = new THREE.MeshBasicMaterial({ color: 0xffaa00 });
         const spark = new THREE.Mesh(sparkGeo, sparkMat);
@@ -385,18 +394,15 @@ function shoot() {
 // ==========================================
 function setupNetworking() {
     if (gameState.isHost) {
-        lobbyStatusText.innerText = 'Creating Room... (Connecting)';
         const peerId = 'arena-' + gameState.roomCode;
         try {
             peer = new window.Peer(peerId);
         } catch (e) {
-            lobbyStatusText.innerText = 'PeerJS offline. Starting Solo.';
-            setTimeout(enterGame, 800);
+            enterGame();
             return;
         }
 
-        peer.on('open', (id) => {
-            console.log('Host Lobby Ready:', id);
+        peer.on('open', () => {
             enterGame();
         });
 
@@ -405,13 +411,11 @@ function setupNetworking() {
             setupConnectionEvents();
         });
 
-        peer.on('error', (err) => {
-            console.warn('PeerJS error:', err.type);
-            enterGame(); // Fallback to play smoothly
+        peer.on('error', () => {
+            enterGame();
         });
 
     } else if (gameState.selectedMode === 'JOIN') {
-        lobbyStatusText.innerText = 'Connecting to Host...';
         try {
             peer = new window.Peer();
         } catch (e) {
@@ -425,11 +429,9 @@ function setupNetworking() {
         });
 
         peer.on('error', () => {
-            lobbyStatusText.innerText = 'Host unreachable. Starting Solo.';
-            setTimeout(enterGame, 1000);
+            enterGame();
         });
     } else {
-        // Solo mode
         enterGame();
     }
 }
@@ -445,8 +447,7 @@ function setupConnectionEvents() {
         } else if (data.type === 'shoot') {
             handleNetworkShoot(data);
         } else if (data.type === 'death') {
-            addCoins(300);
-            console.log('Kill reward! +300 Coins');
+            addCoins(500);
         }
     });
 
@@ -474,7 +475,6 @@ function handleNetworkState(data) {
 function handleNetworkShoot(data) {
     if (data.targetId === peer?.id) {
         let dmg = data.damage;
-        // Armor absorption
         if (armor > 0) {
             const absorbed = Math.min(armor, dmg * 0.5);
             armor -= absorbed;
@@ -493,15 +493,6 @@ function handleNetworkShoot(data) {
     }
 }
 
-let playerFeetOffsetY = 0;
-let paladinLimbs = {
-    rightArm: [],
-    leftArm: [],
-    rightLeg: [],
-    leftLeg: [],
-    torso: []
-};
-
 // ==========================================
 // CHARACTER & WEAPON LOADERS
 // ==========================================
@@ -515,7 +506,7 @@ async function loadPlayer() {
     });
     playerBody.addShape(sphereShape, new CANNON.Vec3(0, -0.35, 0));
     playerBody.addShape(sphereShape, new CANNON.Vec3(0, 0.35, 0));
-    playerBody.position.set(0, 0.8, 0); // On lobby pedestal initially
+    playerBody.position.set(0, 0.8, 0); // On lobby deck initially
     world.addBody(playerBody);
 
     try {
@@ -530,7 +521,7 @@ async function loadPlayer() {
             fbx.scale.set(s, s, s);
         }
 
-        // Calculate bottom of feet to prevent floor sinking
+        // Measure bottom of boots to prevent floor sinking
         fbx.updateMatrixWorld(true);
         const scaledBox = new THREE.Box3().setFromObject(fbx);
         playerFeetOffsetY = scaledBox.min.y;
@@ -556,7 +547,6 @@ async function loadPlayer() {
             const name = (child.name || '').toLowerCase();
             const matName = (child.material?.name || '').toLowerCase();
 
-            // Assign textures based on mesh & material names
             let tex = bodyTex;
             let isArmor = false;
             if (name.includes('armor') || name.includes('boot') || name.includes('neck') || matName.includes('armor')) {
@@ -575,7 +565,7 @@ async function loadPlayer() {
                 side: THREE.DoubleSide
             });
 
-            // Categorize into limbs for procedural walk/aim rig
+            // Categorize limbs for animation
             const mBox = new THREE.Box3().setFromObject(child);
             const mCenter = mBox.getCenter(new THREE.Vector3());
 
@@ -590,7 +580,7 @@ async function loadPlayer() {
             }
         });
 
-        // Pose right arm forward to hold and aim weapon
+        // Pose right arm forward to hold weapon
         paladinLimbs.rightArm.forEach(mesh => {
             mesh.rotation.x = -Math.PI / 4;
             mesh.rotation.z = Math.PI / 10;
@@ -615,7 +605,7 @@ async function loadWeaponItem(item) {
     if (!item || !item.file) return;
     currentWeapon = item;
     shootRate = item.rate || 0.16;
-    weaponDamage = item.damage || 30;
+    weaponDamage = item.damage || 32;
 
     if (weaponMesh && playerMesh) {
         playerMesh.remove(weaponMesh);
@@ -693,7 +683,6 @@ async function loadEnvironment() {
         scene.add(mapGroup);
         mapGroup.updateMatrixWorld(true);
 
-        // Ground Plane at Y = 0
         const groundShape = new CANNON.Plane();
         const groundBody = new CANNON.Body({ mass: 0 });
         groundBody.addShape(groundShape);
@@ -701,7 +690,6 @@ async function loadEnvironment() {
         groundBody.position.set(0, 0, 0);
         world.addBody(groundBody);
 
-        // Exact Trimesh colliders
         mapGroup.traverse((child) => {
             if (!child.isMesh || !child.geometry) return;
             try {
@@ -731,7 +719,6 @@ async function loadEnvironment() {
             } catch (e) {}
         });
 
-        // Spawn player on open arena floor
         if (playerBody) {
             playerBody.position.set(6, 0.9, 6);
             playerBody.velocity.set(0, 0, 0);
@@ -761,11 +748,9 @@ function renderBuyMenu() {
         'grenades': colGrenades
     };
 
-    // Clear all
     Object.values(containers).forEach(c => { if (c) c.innerHTML = ''; });
 
-    // Populate each column
-    SHOP_ITEMS.forEach((item, index) => {
+    SHOP_ITEMS.forEach((item) => {
         const parent = containers[item.category];
         if (!parent) return;
 
@@ -805,12 +790,10 @@ function renderBuyMenu() {
 function selectShopItem(item) {
     selectedItem = item;
 
-    // Update selection highlight
     document.querySelectorAll('.cs-card').forEach(c => c.classList.remove('selected'));
     const activeCard = document.getElementById(`buy-card-${item.id}`);
     if (activeCard) activeCard.classList.add('selected');
 
-    // Update Right-Hand Inspector
     document.getElementById('inspect-icon').innerText = item.icon;
     document.getElementById('inspect-title').innerText = item.name;
     document.getElementById('inspect-cost').innerText = item.cost === 0 ? 'FREE' : `$ ${item.cost}`;
@@ -895,7 +878,9 @@ function toggleShop() {
         if (selectedItem) selectShopItem(selectedItem);
     } else {
         shopMenu.classList.add('hidden');
-        canvas.requestPointerLock();
+        if (gameState.inGame) {
+            canvas.requestPointerLock();
+        }
     }
 }
 
@@ -907,7 +892,7 @@ btnCloseShop.addEventListener('click', toggleShop);
 btnOpenModeModal.addEventListener('click', () => {
     modalModeSelect.classList.remove('hidden');
 });
-btnChangeMode.addEventListener('click', () => {
+modeBadgeCard.addEventListener('click', () => {
     modalModeSelect.classList.remove('hidden');
 });
 btnCloseModeModal.addEventListener('click', () => {
@@ -918,7 +903,8 @@ modeOptSolo.addEventListener('click', () => {
     gameState.selectedMode = 'SOLO';
     gameState.isHost = false;
     gameState.roomCode = 'SOLO';
-    currentModeTitle.innerText = 'SOLO ARENA';
+    currentModeTag.innerText = 'EvoGround (TPP)';
+    currentModeDesc.innerText = 'Selected: Arena Metropolis';
     lobbyRoomCodeTag.innerText = 'SOLO PRACTICE';
     modalModeSelect.classList.add('hidden');
 });
@@ -928,7 +914,8 @@ modeOptHost.addEventListener('click', () => {
     gameState.selectedMode = 'HOST';
     gameState.isHost = true;
     gameState.roomCode = code;
-    currentModeTitle.innerText = 'P2P MULTIPLAYER';
+    currentModeTag.innerText = 'P2P MULTIPLAYER';
+    currentModeDesc.innerText = `Room Host: ${code}`;
     lobbyRoomCodeTag.innerText = `ROOM: ${code}`;
     modalModeSelect.classList.add('hidden');
 });
@@ -939,20 +926,30 @@ btnModalJoin.addEventListener('click', () => {
         gameState.selectedMode = 'JOIN';
         gameState.isHost = false;
         gameState.roomCode = code;
-        currentModeTitle.innerText = `JOINING ${code}`;
+        currentModeTag.innerText = 'P2P MULTIPLAYER';
+        currentModeDesc.innerText = `Joining Room: ${code}`;
         lobbyRoomCodeTag.innerText = `ROOM: ${code}`;
         modalModeSelect.classList.add('hidden');
     }
 });
 
-btnFortnitePlayAction.addEventListener('click', () => {
+btnPubgStart.addEventListener('click', () => {
     playSound('equip');
-    btnFortnitePlayAction.innerText = 'CONNECTING...';
+    btnPubgStart.innerHTML = '<span>DEPLOYING...</span>';
     setupNetworking();
 });
 
-document.getElementById('btn-tab-shop').addEventListener('click', () => {
-    toggleShop();
+document.getElementById('btn-open-armory').addEventListener('click', toggleShop);
+document.getElementById('btn-nav-inventory').addEventListener('click', toggleShop);
+
+document.getElementById('btn-rp').addEventListener('click', () => {
+    playSound('equip');
+    addCoins(500);
+});
+
+document.getElementById('btn-lucky-spin').addEventListener('click', () => {
+    playSound('buy');
+    addCoins(1000);
 });
 
 // ==========================================
@@ -969,10 +966,10 @@ async function enterGame() {
     hudRoomCode.innerText = gameState.roomCode;
     gameState.inGame = true;
 
-    if (lobbyPedestal) {
-        scene.remove(lobbyPedestal);
-    }
-    scene.background = new THREE.Color(0x87CEEB); // Switch to arena sky
+    if (lobbyPedestal) scene.remove(lobbyPedestal);
+    if (lobbyBackgroundMesh) scene.remove(lobbyBackgroundMesh);
+
+    scene.background = new THREE.Color(0x87CEEB);
     scene.fog = new THREE.FogExp2(0x87CEEB, 0.015);
 
     try {
@@ -996,22 +993,22 @@ function animate() {
 
     if (!gameState.inGame) {
         // ==========================================
-        // LOBBY MODE CAMERA & CHARACTER ROTATION
+        // LOBBY COMBAT DECK CAMERA & IDLE POSE
         // ==========================================
         if (playerMesh) {
-            playerMesh.position.set(0, 0, 0);
-            playerMesh.rotation.y = time * 0.4; // Smooth idle turnaround
+            playerMesh.position.set(0, 0.02, 0);
+            playerMesh.rotation.y = time * 0.35;
         }
         if (lobbyPedestal) {
-            lobbyPedestal.rotation.y = -time * 0.2;
+            lobbyPedestal.rotation.y = -time * 0.15;
         }
 
-        // Orbit camera in lobby
-        const orbitDist = 3.8;
-        camera.position.x = Math.sin(time * 0.15) * 1.5;
-        camera.position.y = 1.3 + Math.sin(time * 0.5) * 0.05;
+        // Low-angle cinematic orbit camera
+        const orbitDist = 3.4;
+        camera.position.x = Math.sin(time * 0.12) * 1.8;
+        camera.position.y = 1.05 + Math.sin(time * 0.4) * 0.06;
         camera.position.z = orbitDist;
-        camera.lookAt(0, 0.9, 0);
+        camera.lookAt(0, 0.85, 0);
 
     } else {
         // ==========================================
@@ -1020,7 +1017,6 @@ function animate() {
         world.step(timeStep, delta, 3);
         updatePlayer(delta, time);
 
-        // Network tick
         if (conn && conn.open && playerBody && playerMesh) {
             lastNetTick += delta;
             if (lastNetTick >= netTickRate) {
@@ -1073,9 +1069,8 @@ function updatePlayer(delta, time) {
         keys.space = false;
     }
 
-    // Sync mesh to physics body with exact feet grounding
+    // Sync mesh to physics body with feet grounding
     if (playerMesh) {
-        // Ground contact is at playerBody.position.y - 0.7 (bottom of physics capsule)
         const groundContactY = playerBody.position.y - 0.7;
         playerMesh.position.x = playerBody.position.x;
         playerMesh.position.z = playerBody.position.z;
@@ -1123,7 +1118,6 @@ function updatePlayer(delta, time) {
     camera.position.set(camX, camY, camZ);
     camera.lookAt(playerBody.position.x, playerBody.position.y + yOffset, playerBody.position.z);
 
-    // Recoil recovery
     if (shootCooldown > 0) shootCooldown -= delta;
     if (weaponMesh) {
         if (recoilOffset > 0) {
