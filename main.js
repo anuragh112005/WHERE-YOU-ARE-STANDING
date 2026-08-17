@@ -97,6 +97,24 @@ function playSound(type) {
             osc.start(now);
             osc.stop(now + 0.12);
             break;
+        case 'slide_sfx':
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(160, now);
+            osc.frequency.exponentialRampToValueAtTime(60, now + 0.4);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+            osc.start(now);
+            osc.stop(now + 0.4);
+            break;
+        case 'jump_sfx':
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(200, now);
+            osc.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+            break;
         case 'buy':
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(587, now);
@@ -105,14 +123,6 @@ function playSound(type) {
             gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
             osc.start(now);
             osc.stop(now + 0.35);
-            break;
-        case 'error':
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(140, now);
-            gain.gain.setValueAtTime(0.2, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
-            osc.start(now);
-            osc.stop(now + 0.25);
             break;
         case 'hit_metal':
             osc.type = 'sine';
@@ -177,28 +187,14 @@ window.addEventListener('resize', () => {
 // 3. WEAPONS CATALOG
 // =========================================================
 const SHOP_ITEMS = [
-    // Equipment
-    { id: 'kevlar', category: 'equipment', name: 'Kevlar Vest', cost: 650, icon: '🛡️', type: 'armor', value: 50, dmgVal: 0, rateVal: 0, rangeVal: 0, desc: 'Lightweight body armor absorbing 50% damage.', tip: 'Essential budget protection.' },
-    { id: 'helmet', category: 'equipment', name: 'Kevlar + Helmet', cost: 1000, icon: '🪖', type: 'armor', value: 100, dmgVal: 0, rateVal: 0, rangeVal: 0, desc: 'Full ballistic helmet and vest set.', tip: 'Full protection against headshots.' },
+    { id: 'kevlar', category: 'equipment', name: 'Kevlar Vest', cost: 650, icon: '🛡️', type: 'armor', value: 50, dmgVal: 0, rateVal: 0, rangeVal: 0, desc: 'Lightweight body armor.', tip: 'Essential budget protection.' },
+    { id: 'helmet', category: 'equipment', name: 'Kevlar + Helmet', cost: 1000, icon: '🪖', type: 'armor', value: 100, dmgVal: 0, rateVal: 0, rangeVal: 0, desc: 'Full ballistic set.', tip: 'Prevents headshot kill.' },
     { id: 'medkit', category: 'equipment', name: 'Tactical Medkit', cost: 300, icon: '💊', type: 'health', value: 100, dmgVal: 0, rateVal: 0, rangeVal: 0, desc: 'Restores health instantly to 100 HP.', tip: 'Use behind cover.' },
-
-    // Pistols
     { id: 'fpspist', category: 'pistols', name: 'FPS Pistol', cost: 100, file: './gun_fps_hand.glb', icon: '🔰', type: 'gun', sound: 'shoot_pistol', vfx: 'TypeB', damage: 38, rate: 0.35, magSize: 12, reserve: 60, dmgVal: 38, rateVal: 45, rangeVal: 50, desc: 'Crisp semi-automatic sidearm.', tip: 'High headshot multiplier.' },
-    { id: 'dual_beretta', category: 'pistols', name: 'Dual Berettas', cost: 300, file: './gun_fps_hand.glb', icon: '🔫', type: 'gun', sound: 'shoot_pistol', vfx: 'TypeA', damage: 24, rate: 0.14, magSize: 30, reserve: 90, dmgVal: 24, rateVal: 75, rangeVal: 40, desc: 'High rate of close-quarters fire.', tip: 'Rapid trigger response.' },
-
-    // Mid-Tier
-    { id: 'uzi', category: 'mid-tier', name: 'UZI Submachine', cost: 200, file: './uzi.glb', icon: '⚡', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 16, rate: 0.07, magSize: 32, reserve: 120, dmgVal: 16, rateVal: 95, rangeVal: 45, desc: 'Blistering fire rate for skirmishes.', tip: 'Effective in tight hallways.' },
-    { id: 'pp19', category: 'mid-tier', name: 'PP-19 Vityaz', cost: 250, file: './pp-19-01_vityaz.glb', icon: '🎯', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 22, rate: 0.10, magSize: 30, reserve: 90, dmgVal: 22, rateVal: 85, rangeVal: 60, desc: 'Predictable 9mm recoil pattern.', tip: 'Easy burst control.' },
-    { id: 'ump', category: 'mid-tier', name: 'HK UMP', cost: 300, file: './heckler__koch_ump.glb', icon: '🎖️', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 26, rate: 0.13, magSize: 25, reserve: 75, dmgVal: 26, rateVal: 70, rangeVal: 65, desc: '.45 ACP punch with high stopping power.', tip: 'Medium range bursts.' },
-    { id: 'm590', category: 'mid-tier', name: 'M590 Shotgun', cost: 400, file: './free_fire_gun_m590.glb', icon: '💣', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeC', damage: 95, rate: 0.90, magSize: 8, reserve: 32, dmgVal: 95, rateVal: 15, rangeVal: 30, desc: 'Devastating pump-action close range blast.', tip: 'One-shot kill at point blank.' },
-
-    // Rifles
-    { id: 'ak47', category: 'rifles', name: 'AK-47', cost: 0, file: './ak-47_mid-poly.glb', icon: '🔫', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 32, rate: 0.15, magSize: 30, reserve: 90, dmgVal: 32, rateVal: 75, rangeVal: 80, desc: 'Lethal combat rifle with high range and power.', tip: 'Tap fire for precision headshots.' },
-    { id: 'm4', category: 'rifles', name: 'M4 Carbine', cost: 150, file: './m4_carbine_rifle.glb', icon: '🪖', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 28, rate: 0.12, magSize: 30, reserve: 90, dmgVal: 28, rateVal: 85, rangeVal: 85, desc: 'Laser-accurate NATO rifle with smooth control.', tip: 'Ideal for sustained precision.' },
-
-    // Grenades
-    { id: 'flashbang', category: 'grenades', name: 'Flashbang', cost: 200, icon: '✨', type: 'grenade', dmgVal: 0, rateVal: 50, rangeVal: 70, desc: 'Blinds and disorients opponents.', tip: 'Throw before clearing corners.' },
-    { id: 'he_frag', category: 'grenades', name: 'HE Frag Grenade', cost: 400, icon: '💥', type: 'grenade', dmgVal: 80, rateVal: 30, rangeVal: 50, desc: 'High explosive fragmentation grenade.', tip: 'Area damage.' }
+    { id: 'uzi', category: 'mid-tier', name: 'UZI Submachine', cost: 200, file: './uzi.glb', icon: '⚡', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 16, rate: 0.07, magSize: 32, reserve: 120, dmgVal: 16, rateVal: 95, rangeVal: 45, desc: 'Blistering fire rate.', tip: 'Run and gun.' },
+    { id: 'ak47', category: 'rifles', name: 'AK-47', cost: 0, file: './ak-47_mid-poly.glb', icon: '🔫', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 32, rate: 0.15, magSize: 30, reserve: 90, dmgVal: 32, rateVal: 75, rangeVal: 80, desc: 'Lethal assault rifle.', tip: 'Tap fire precision.' },
+    { id: 'm4', category: 'rifles', name: 'M4 Carbine', cost: 150, file: './m4_carbine_rifle.glb', icon: '🪖', type: 'gun', sound: 'shoot_rifle', vfx: 'TypeA', damage: 28, rate: 0.12, magSize: 30, reserve: 90, dmgVal: 28, rateVal: 85, rangeVal: 85, desc: 'Laser-accurate NATO rifle.', tip: 'Smooth recoil.' },
+    { id: 'flashbang', category: 'grenades', name: 'Flashbang', cost: 200, icon: '✨', type: 'grenade', dmgVal: 0, rateVal: 50, rangeVal: 70, desc: 'Blinds enemies.', tip: 'Clear corners.' }
 ];
 
 let selectedShopItem = SHOP_ITEMS.find(i => i.id === 'ak47');
@@ -220,70 +216,38 @@ class VFXManager {
 
         let color = 0xffaa00;
         let scale = 0.35;
-
-        if (type === 'TypeB') {
-            color = 0x38bdf8;
-            scale = 0.2;
-        } else if (type === 'TypeC') {
-            color = 0xff4400;
-            scale = 0.6;
-        }
+        if (type === 'TypeB') { color = 0x38bdf8; scale = 0.2; }
 
         const coreGeo = new THREE.SphereGeometry(scale * 0.4, 8, 8);
         const coreMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         flashGroup.add(new THREE.Mesh(coreGeo, coreMat));
 
         const outerGeo = new THREE.SphereGeometry(scale, 8, 8);
-        const outerMat = new THREE.MeshBasicMaterial({
-            color: color,
-            transparent: true,
-            opacity: 0.8
-        });
+        const outerMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.8 });
         flashGroup.add(new THREE.Mesh(outerGeo, outerMat));
 
         scene.add(flashGroup);
         setTimeout(() => {
             scene.remove(flashGroup);
-            coreGeo.dispose();
-            coreMat.dispose();
-            outerGeo.dispose();
-            outerMat.dispose();
+            coreGeo.dispose(); coreMat.dispose();
+            outerGeo.dispose(); outerMat.dispose();
         }, 60);
     }
 
     createShellEjection(position) {
         const shellGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.05, 6);
-        const shellMat = new THREE.MeshStandardMaterial({
-            color: 0xd97706,
-            metalness: 0.9,
-            roughness: 0.2
-        });
+        const shellMat = new THREE.MeshStandardMaterial({ color: 0xd97706, metalness: 0.9, roughness: 0.2 });
         const shell = new THREE.Mesh(shellGeo, shellMat);
         shell.position.copy(position);
         scene.add(shell);
 
-        const vel = new THREE.Vector3(
-            Math.random() * 0.4 + 0.3,
-            Math.random() * 0.5 + 0.5,
-            Math.random() * 0.4 - 0.2
-        );
-
-        this.particles.push({
-            mesh: shell,
-            vel: vel,
-            life: 0.8,
-            gravity: true,
-            rotSpeed: new THREE.Vector3(10, 15, 5)
-        });
+        const vel = new THREE.Vector3(Math.random() * 0.4 + 0.3, Math.random() * 0.5 + 0.5, Math.random() * 0.4 - 0.2);
+        this.particles.push({ mesh: shell, vel: vel, life: 0.8, gravity: true, rotSpeed: new THREE.Vector3(10, 15, 5) });
     }
 
     createImpact(point, normal, surfaceType = 'concrete') {
         const count = surfaceType === 'metal' ? 14 : 8;
-        let color = 0x94a3b8;
-
-        if (surfaceType === 'metal') color = 0xfbbf24;
-        else if (surfaceType === 'flesh') color = 0xef4444;
-        else if (surfaceType === 'wood') color = 0x92400e;
+        let color = surfaceType === 'metal' ? 0xfbbf24 : (surfaceType === 'flesh' ? 0xef4444 : 0x94a3b8);
 
         for (let i = 0; i < count; i++) {
             const pGeo = new THREE.BoxGeometry(0.04, 0.04, 0.04);
@@ -298,13 +262,7 @@ class VFXManager {
                 normal.y * 2 + (Math.random() - 0.5) * spread + (surfaceType === 'metal' ? 1 : 0),
                 normal.z * 2 + (Math.random() - 0.5) * spread
             );
-
-            this.particles.push({
-                mesh: pMesh,
-                vel: vel,
-                life: 0.45,
-                gravity: true
-            });
+            this.particles.push({ mesh: pMesh, vel: vel, life: 0.45, gravity: true });
         }
 
         if (surfaceType === 'metal') playSound('hit_metal');
@@ -313,68 +271,49 @@ class VFXManager {
 
     createBulletHole(point, normal) {
         const decalGeo = new THREE.CircleGeometry(0.05, 8);
-        const decalMat = new THREE.MeshBasicMaterial({
-            color: 0x111827,
-            side: THREE.DoubleSide,
-            depthWrite: false,
-            transparent: true,
-            opacity: 0.9
-        });
+        const decalMat = new THREE.MeshBasicMaterial({ color: 0x111827, side: THREE.DoubleSide, depthWrite: false, transparent: true, opacity: 0.9 });
         const decal = new THREE.Mesh(decalGeo, decalMat);
         decal.position.copy(point).addScaledVector(normal, 0.005);
         decal.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
         decal.rotation.z = Math.random() * Math.PI * 2;
-
         scene.add(decal);
         this.decals.push({ mesh: decal, time: Date.now() });
 
         if (this.decals.length > this.maxDecals) {
             const oldest = this.decals.shift();
             scene.remove(oldest.mesh);
-            oldest.mesh.geometry.dispose();
-            oldest.mesh.material.dispose();
+            oldest.mesh.geometry.dispose(); oldest.mesh.material.dispose();
         }
     }
 
     createBulletTrail(start, end) {
         this.shotCount++;
         const isTracer = this.shotCount % 3 === 0;
-
         const points = [start, end];
         const geometry = new THREE.BufferGeometry().setFromPoints(points);
         const material = new THREE.LineBasicMaterial({
             color: isTracer ? 0x38bdf8 : 0xf59e0b,
             transparent: true,
-            opacity: isTracer ? 0.95 : 0.65,
-            linewidth: isTracer ? 2 : 1
+            opacity: isTracer ? 0.95 : 0.65
         });
         const line = new THREE.Line(geometry, material);
         scene.add(line);
-
-        setTimeout(() => {
-            scene.remove(line);
-            geometry.dispose();
-            material.dispose();
-        }, 120);
+        setTimeout(() => { scene.remove(line); geometry.dispose(); material.dispose(); }, 120);
     }
 
     update(delta) {
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const p = this.particles[i];
             p.life -= delta;
-
             if (p.gravity) p.vel.y -= 9.81 * delta;
             p.mesh.position.addScaledVector(p.vel, delta);
-
             if (p.rotSpeed) {
                 p.mesh.rotation.x += p.rotSpeed.x * delta;
                 p.mesh.rotation.y += p.rotSpeed.y * delta;
             }
-
             if (p.life <= 0) {
                 scene.remove(p.mesh);
-                p.mesh.geometry.dispose();
-                p.mesh.material.dispose();
+                p.mesh.geometry.dispose(); p.mesh.material.dispose();
                 this.particles.splice(i, 1);
             }
         }
@@ -518,7 +457,6 @@ class WeaponSystem {
             if (playerMesh) playerMesh.add(this.mesh);
 
             updateHUD();
-            console.log('Equipped:', item.name);
         } catch (e) {
             console.error('Failed to equip weapon:', e);
         }
@@ -646,13 +584,27 @@ class WeaponSystem {
 const weaponSystem = new WeaponSystem();
 
 // =========================================================
-// 7. CHARACTER RIGGING & MANUAL 360 DRAG
+// 7. COMPLETE CHARACTER RIGGING & PROCEDURAL ANIMATIONS
+// (IDLE, WALK, RUN, RELOAD, SLIDE, JUMP, PEEK)
 // =========================================================
 let playerBody, playerMesh;
 let playerFeetOffsetY = 0;
-let paladinLimbs = { rightArm: [], leftArm: [], rightLeg: [], leftLeg: [], torso: [] };
+
+// Hierarchical Rig Groups
+let paladinLimbs = {
+    rightArm: [],
+    leftArm: [],
+    rightLeg: [],
+    leftLeg: [],
+    torso: [],
+    head: []
+};
+
 let cameraYaw = 0;
 let cameraPitch = 0;
+let peekOffset = 0; // Current peek lerp value (-1 to +1)
+let slideTimer = 0; // Active slide duration
+let slideDirection = new THREE.Vector3();
 let isCrouching = false;
 let colorIndex = Math.floor(Math.random() * 0xffffff);
 
@@ -663,7 +615,6 @@ const walkSpeed = 5.5;
 const sprintSpeed = 9.5;
 const jumpVelocity = 6.5;
 
-// Textures cache for outfit swapping
 let textures = {};
 
 async function loadCharacter() {
@@ -702,7 +653,7 @@ async function loadCharacter() {
 
         Object.values(textures).forEach(t => { t.colorSpace = THREE.SRGBColorSpace; });
 
-        paladinLimbs = { rightArm: [], leftArm: [], rightLeg: [], leftLeg: [], torso: [] };
+        paladinLimbs = { rightArm: [], leftArm: [], rightLeg: [], leftLeg: [], torso: [], head: [] };
 
         fbx.traverse((child) => {
             if (!child.isMesh) return;
@@ -739,12 +690,14 @@ async function loadCharacter() {
             } else if (name.includes('boot_armor')) {
                 if (mCenter.x > 0) paladinLimbs.rightLeg.push(child);
                 else paladinLimbs.leftLeg.push(child);
+            } else if (name.includes('hair') || name.includes('eye')) {
+                paladinLimbs.head.push(child);
             } else {
                 paladinLimbs.torso.push(child);
             }
         });
 
-        // Pose right arm forward to hold weapon
+        // Initialize default combat pose
         paladinLimbs.rightArm.forEach(m => {
             m.rotation.x = -Math.PI / 4;
             m.rotation.z = Math.PI / 10;
@@ -764,7 +717,7 @@ async function loadCharacter() {
     }
 }
 
-// 3D Lobby Platform Setup with Cyberpunk Image Background
+// 3D Lobby Platform Setup
 let lobbyPedestal, lobbyBackgroundMesh;
 function buildLobbyPlatform() {
     lobbyPedestal = new THREE.Group();
@@ -795,7 +748,6 @@ function buildLobbyPlatform() {
     innerRing.position.y = 0.02;
     lobbyPedestal.add(innerRing);
 
-    // Load cyberpunk background image added by user
     texLoader.load('./cyberpunk-asus-rog-1920x1080-19780.jpg', (tex) => {
         tex.colorSpace = THREE.SRGBColorSpace;
         const bgGeo = new THREE.SphereGeometry(25, 32, 16);
@@ -880,9 +832,13 @@ async function loadArenaEnvironment() {
 }
 
 // =========================================================
-// 9. INPUT HANDLING & MANUAL LOBBY ROTATION
+// 9. INPUT HANDLING (Movement, Jump, Slide, Peek Q/E)
 // =========================================================
-const keys = { w: false, a: false, s: false, d: false, shift: false, ctrl: false, space: false };
+const keys = {
+    w: false, a: false, s: false, d: false,
+    shift: false, ctrl: false, space: false,
+    q: false, e: false, c: false
+};
 
 window.addEventListener('keydown', (e) => {
     const k = e.key.toLowerCase();
@@ -890,6 +846,17 @@ window.addEventListener('keydown', (e) => {
     if (e.shiftKey) keys.shift = true;
     if (e.ctrlKey) keys.ctrl = true;
     if (e.code === 'Space') keys.space = true;
+
+    // Trigger Combat Slide with 'C' or 'Ctrl' while moving
+    if ((k === 'c' || e.ctrlKey) && keys.shift && gameState.inGame && slideTimer <= 0) {
+        slideTimer = 0.8;
+        playSound('slide_sfx');
+        if (playerBody) {
+            slideDirection.set(playerBody.velocity.x, 0, playerBody.velocity.z).normalize();
+            playerBody.velocity.x = slideDirection.x * 14;
+            playerBody.velocity.z = slideDirection.z * 14;
+        }
+    }
 
     if (k === 'r' && gameState.inGame && !gameState.isShopOpen) {
         reloadSystem.startReload(weaponSystem.current);
@@ -908,7 +875,7 @@ window.addEventListener('keyup', (e) => {
     if (e.code === 'Space') keys.space = false;
 });
 
-// Manual 360° Drag Rotation in Lobby
+// Mouse Controls
 window.addEventListener('mousedown', (e) => {
     if (!gameState.inGame && e.button === 0) {
         isDraggingLobby = true;
@@ -1001,7 +968,7 @@ function addKillFeed(text) {
     }, 4000);
 }
 
-// World Chat Logic
+// World Chat
 const modalChat = document.getElementById('modal-chat');
 const btnOpenChat = document.getElementById('btn-open-chat');
 const btnCloseChat = document.getElementById('btn-close-chat');
@@ -1053,7 +1020,7 @@ const modalRp = document.getElementById('modal-rp');
 document.getElementById('btn-rp').addEventListener('click', () => modalRp.classList.remove('hidden'));
 document.getElementById('btn-close-rp').addEventListener('click', () => modalRp.classList.add('hidden'));
 
-// Inventory / Locker Modal
+// Inventory Locker Modal
 const modalInventory = document.getElementById('modal-inventory');
 document.getElementById('btn-open-inventory-locker').addEventListener('click', () => modalInventory.classList.remove('hidden'));
 document.getElementById('btn-nav-inventory').addEventListener('click', () => modalInventory.classList.remove('hidden'));
@@ -1078,7 +1045,7 @@ tabInvGuns.addEventListener('click', () => {
     gridInvOutfits.classList.add('hidden');
 });
 
-// Outfit selection
+// Outfit Swapping
 document.querySelectorAll('#grid-inv-outfits .inv-card').forEach(card => {
     card.addEventListener('click', () => {
         document.querySelectorAll('#grid-inv-outfits .inv-card').forEach(c => {
@@ -1112,7 +1079,7 @@ function applyOutfitToModel(outfit) {
     });
 }
 
-// Gun skin selection in inventory
+// Gun skin swapping
 document.querySelectorAll('#grid-inv-guns .inv-card').forEach(card => {
     card.addEventListener('click', () => {
         document.querySelectorAll('#grid-inv-guns .inv-card').forEach(c => {
@@ -1178,7 +1145,7 @@ document.getElementById('btn-pubg-start').addEventListener('click', () => {
     setupNetworking();
 });
 
-// In-Game Buy Menu Logic
+// In-Game Buy Menu
 function renderBuyMenu() {
     const cols = {
         'equipment': document.getElementById('col-equipment'),
@@ -1286,12 +1253,6 @@ function buyItem() {
             playSound('buy');
             renderBuyMenu();
             selectShopItem(selectedShopItem);
-        } else playSound('error');
-    } else if (selectedShopItem.type === 'grenade') {
-        if (gameState.coins >= selectedShopItem.cost) {
-            gameState.coins -= selectedShopItem.cost;
-            playSound('buy');
-            updateHUD();
         } else playSound('error');
     }
 }
@@ -1434,7 +1395,7 @@ async function enterGame() {
 }
 
 // =========================================================
-// 11. MAIN GAME LOOP
+// 11. MAIN GAME LOOP & ANIMATION CONTROLLER
 // =========================================================
 const clock = new THREE.Clock();
 
@@ -1448,16 +1409,28 @@ function animate() {
     reloadSystem.update(delta, weaponSystem.current);
 
     if (!gameState.inGame) {
-        // In Lobby: Character stays static until user drags horizontally
+        // LOBBY IDLE ANIMATION
         if (playerMesh) {
             playerMesh.position.set(0, 0.02, 0);
+
+            // Subtle idle breathing
+            const breathe = Math.sin(time * 2) * 0.008;
+            paladinLimbs.torso.forEach(m => m.position.y = breathe);
+            paladinLimbs.head.forEach(m => m.position.y = breathe);
+            paladinLimbs.rightArm.forEach(m => {
+                m.rotation.x = -Math.PI / 4 + Math.sin(time * 2) * 0.02;
+                m.rotation.z = Math.PI / 10;
+            });
+            paladinLimbs.leftArm.forEach(m => {
+                m.rotation.x = -Math.PI / 3 + Math.sin(time * 2) * 0.015;
+                m.rotation.y = Math.PI / 5;
+            });
         }
-        // Camera fixed view
         camera.position.set(0, 1.35, 3.2);
         camera.lookAt(0, 0.85, 0);
     } else {
         world.step(timeStep, delta, 3);
-        updatePlayerController(delta, time);
+        updatePlayerAnimationController(delta, time);
 
         if (conn && conn.open && playerBody && playerMesh) {
             lastNetTick += delta;
@@ -1477,18 +1450,27 @@ function animate() {
     renderer.render(scene, camera);
 }
 
-function updatePlayerController(delta, time) {
+function updatePlayerAnimationController(delta, time) {
     if (!playerBody || !gameState.inGame) return;
 
+    // Out-of-bounds Reset
     if (playerBody.position.y < -2.0) {
         playerBody.position.set(6, 0.9, 6);
         playerBody.velocity.set(0, 0, 0);
         playerBody.angularVelocity.set(0, 0, 0);
     }
 
-    const speed = keys.shift ? sprintSpeed : walkSpeed;
-    isCrouching = keys.ctrl;
-    const currentSpeed = isCrouching ? speed * 0.5 : speed;
+    // Slide state timer
+    const isSliding = slideTimer > 0;
+    if (isSliding) {
+        slideTimer -= delta;
+        playerBody.velocity.x *= 0.96;
+        playerBody.velocity.z *= 0.96;
+    }
+
+    const isSprinting = keys.shift && !keys.ctrl && !isSliding;
+    isCrouching = keys.ctrl && !isSliding;
+    const speed = isSliding ? 0 : (isSprinting ? sprintSpeed : (isCrouching ? walkSpeed * 0.5 : walkSpeed));
 
     const direction = new THREE.Vector3();
     if (keys.w) direction.z -= 1;
@@ -1497,47 +1479,57 @@ function updatePlayerController(delta, time) {
     if (keys.d) direction.x += 1;
 
     direction.normalize();
-    const isMoving = direction.lengthSq() > 0;
+    const isMoving = direction.lengthSq() > 0 && !isSliding;
 
     if (isMoving) {
         const euler = new THREE.Euler(0, cameraYaw, 0, 'YXZ');
         direction.applyEuler(euler);
-        playerBody.velocity.x = direction.x * currentSpeed;
-        playerBody.velocity.z = direction.z * currentSpeed;
+        playerBody.velocity.x = direction.x * speed;
+        playerBody.velocity.z = direction.z * speed;
 
         if (playerMesh) {
             playerMesh.rotation.y = Math.atan2(playerBody.velocity.x, playerBody.velocity.z);
         }
-    } else {
+    } else if (!isSliding) {
         playerBody.velocity.x *= 0.5;
         playerBody.velocity.z *= 0.5;
     }
 
-    if (keys.space && Math.abs(playerBody.velocity.y) < 0.1) {
+    // JUMP Handling
+    const isGrounded = Math.abs(playerBody.velocity.y) < 0.15;
+    if (keys.space && isGrounded && !isSliding) {
         playerBody.velocity.y = jumpVelocity;
+        playSound('jump_sfx');
         keys.space = false;
     }
 
+    // PEEK Q/E Target Lerp
+    let targetPeek = 0;
+    if (keys.q) targetPeek = 1;      // Lean left
+    else if (keys.e) targetPeek = -1; // Lean right
+    peekOffset += (targetPeek - peekOffset) * (delta * 10);
+
+    // Sync mesh to physics body with grounded feet offset
     if (playerMesh) {
         const groundContactY = playerBody.position.y - 0.7;
         playerMesh.position.x = playerBody.position.x;
         playerMesh.position.z = playerBody.position.z;
         playerMesh.position.y = groundContactY - playerFeetOffsetY;
 
-        const bobRate = isCrouching ? 8 : (keys.shift ? 18 : 12);
+        // Apply Peek Tilt to Torso & Head
+        const peekTilt = peekOffset * 0.35;
 
-        if (isMoving) {
-            const legSwing = Math.sin(time * bobRate) * 0.5;
-            paladinLimbs.rightLeg.forEach(m => m.rotation.x = -legSwing);
-            paladinLimbs.leftLeg.forEach(m => m.rotation.x = legSwing);
-            paladinLimbs.rightArm.forEach(m => m.rotation.x = -Math.PI / 4 + Math.sin(time * bobRate) * 0.1);
-            paladinLimbs.leftArm.forEach(m => m.rotation.x = -Math.PI / 3 - Math.sin(time * bobRate) * 0.1);
-
-            playerMesh.position.y += Math.sin(time * bobRate * 2) * 0.03;
-            playerMesh.rotation.z = Math.sin(time * bobRate * 0.5) * 0.02;
-        } else {
-            paladinLimbs.rightLeg.forEach(m => m.rotation.x = 0);
-            paladinLimbs.leftLeg.forEach(m => m.rotation.x = 0);
+        // ==========================================
+        // 1. SLIDE ANIMATION
+        // ==========================================
+        if (isSliding) {
+            playerMesh.position.y -= 0.35;
+            paladinLimbs.torso.forEach(m => {
+                m.rotation.x = -0.35;
+                m.rotation.z = peekTilt;
+            });
+            paladinLimbs.rightLeg.forEach(m => m.rotation.x = -1.1); // Front leg slide
+            paladinLimbs.leftLeg.forEach(m => m.rotation.x = 0.6);   // Back leg tucked
             paladinLimbs.rightArm.forEach(m => {
                 m.rotation.x = -Math.PI / 4;
                 m.rotation.z = Math.PI / 10;
@@ -1546,24 +1538,131 @@ function updatePlayerController(delta, time) {
                 m.rotation.x = -Math.PI / 3;
                 m.rotation.y = Math.PI / 5;
             });
-            playerMesh.position.y += Math.sin(time * 1.5) * 0.01;
-            playerMesh.rotation.z = 0;
+
+        // ==========================================
+        // 2. JUMP / AIR ANIMATION
+        // ==========================================
+        } else if (!isGrounded) {
+            paladinLimbs.torso.forEach(m => {
+                m.rotation.x = 0.1;
+                m.rotation.z = peekTilt;
+            });
+            paladinLimbs.rightLeg.forEach(m => m.rotation.x = -0.45); // Legs tucked
+            paladinLimbs.leftLeg.forEach(m => m.rotation.x = -0.45);
+            paladinLimbs.rightArm.forEach(m => m.rotation.x = -Math.PI / 3.5);
+            paladinLimbs.leftArm.forEach(m => m.rotation.x = -Math.PI / 2.8);
+
+        // ==========================================
+        // 3. WALK / RUN ANIMATION
+        // ==========================================
+        } else if (isMoving) {
+            const bobRate = isSprinting ? 16 : (isCrouching ? 8 : 11);
+            const strideAmp = isSprinting ? 0.75 : 0.45;
+            const legSwing = Math.sin(time * bobRate) * strideAmp;
+
+            paladinLimbs.rightLeg.forEach(m => m.rotation.x = -legSwing);
+            paladinLimbs.leftLeg.forEach(m => m.rotation.x = legSwing);
+
+            paladinLimbs.torso.forEach(m => {
+                m.rotation.x = isSprinting ? 0.22 : 0.05; // Lean forward on sprint
+                m.rotation.z = peekTilt + Math.sin(time * bobRate * 0.5) * 0.02;
+            });
+
+            // Reload left arm override during reload
+            if (reloadSystem.isReloading) {
+                animateReloadArm(reloadSystem.reloadProgress);
+            } else {
+                paladinLimbs.rightArm.forEach(m => {
+                    m.rotation.x = -Math.PI / 4 + Math.sin(time * bobRate) * (isSprinting ? 0.18 : 0.08);
+                    m.rotation.z = Math.PI / 10;
+                });
+                paladinLimbs.leftArm.forEach(m => {
+                    m.rotation.x = -Math.PI / 3 - Math.sin(time * bobRate) * (isSprinting ? 0.18 : 0.08);
+                    m.rotation.y = Math.PI / 5;
+                });
+            }
+
+            playerMesh.position.y += Math.sin(time * bobRate * 2) * (isSprinting ? 0.04 : 0.02);
+
+        // ==========================================
+        // 4. IDLE ANIMATION
+        // ==========================================
+        } else {
+            const breathe = Math.sin(time * 2) * 0.008;
+            paladinLimbs.rightLeg.forEach(m => m.rotation.x = 0);
+            paladinLimbs.leftLeg.forEach(m => m.rotation.x = 0);
+
+            paladinLimbs.torso.forEach(m => {
+                m.rotation.x = 0;
+                m.rotation.z = peekTilt;
+                m.position.y = breathe;
+            });
+
+            if (reloadSystem.isReloading) {
+                animateReloadArm(reloadSystem.reloadProgress);
+            } else {
+                paladinLimbs.rightArm.forEach(m => {
+                    m.rotation.x = -Math.PI / 4 + Math.sin(time * 2) * 0.02;
+                    m.rotation.z = Math.PI / 10;
+                });
+                paladinLimbs.leftArm.forEach(m => {
+                    m.rotation.x = -Math.PI / 3 + Math.sin(time * 2) * 0.015;
+                    m.rotation.y = Math.PI / 5;
+                });
+            }
         }
 
-        if (isCrouching) playerMesh.position.y -= 0.3;
+        if (isCrouching && !isSliding) playerMesh.position.y -= 0.3;
     }
 
-    const orbitDist = weaponSystem.isADS ? 2.2 : (isCrouching ? 2.5 : 3.8);
-    const yOffset = weaponSystem.isADS ? 1.35 : (isCrouching ? 0.6 : 1.45);
+    // Third-person Orbit Camera Rig with Peek & ADS Offset
+    const orbitDist = weaponSystem.isADS ? 2.2 : (isCrouching || isSliding ? 2.5 : 3.8);
+    const yOffset = weaponSystem.isADS ? 1.35 : (isCrouching || isSliding ? 0.6 : 1.45);
 
-    const camX = playerBody.position.x + orbitDist * Math.sin(cameraYaw) * Math.cos(cameraPitch);
+    // Peek lateral camera offset (Q/E)
+    const peekCamOffset = new THREE.Vector3(-peekOffset * 0.55, 0, 0).applyEuler(new THREE.Euler(0, cameraYaw, 0));
+
+    const camX = playerBody.position.x + orbitDist * Math.sin(cameraYaw) * Math.cos(cameraPitch) + peekCamOffset.x;
     const camY = playerBody.position.y + yOffset + orbitDist * Math.sin(cameraPitch);
-    const camZ = playerBody.position.z + orbitDist * Math.cos(cameraYaw) * Math.cos(cameraPitch);
+    const camZ = playerBody.position.z + orbitDist * Math.cos(cameraYaw) * Math.cos(cameraPitch) + peekCamOffset.z;
 
     camera.position.set(camX, camY, camZ);
-    camera.lookAt(playerBody.position.x, playerBody.position.y + yOffset, playerBody.position.z);
+    camera.lookAt(playerBody.position.x + peekCamOffset.x, playerBody.position.y + yOffset, playerBody.position.z + peekCamOffset.z);
 
     weaponSystem.update(delta, time, isMoving);
+}
+
+// 4-Stage Reload Arm Animation Keyframe Solver
+function animateReloadArm(progress) {
+    if (progress < 0.35) {
+        // Phase 1: Hand drops to hip magazine pouch
+        paladinLimbs.leftArm.forEach(m => {
+            m.rotation.x = 0.2;
+            m.rotation.y = 0;
+            m.rotation.z = -0.2;
+        });
+    } else if (progress < 0.70) {
+        // Phase 2: Hand raises up to insert magazine into weapon
+        paladinLimbs.leftArm.forEach(m => {
+            m.rotation.x = -Math.PI / 2.2;
+            m.rotation.y = Math.PI / 4;
+            m.rotation.z = 0;
+        });
+    } else if (progress < 0.90) {
+        // Phase 3: Hand slides back chamber bolt
+        paladinLimbs.leftArm.forEach(m => {
+            m.rotation.x = -Math.PI / 2.0;
+            m.rotation.y = Math.PI / 6;
+            m.rotation.z = -0.3;
+        });
+    } else {
+        // Phase 4: Returns to weapon grip
+        paladinLimbs.leftArm.forEach(m => {
+            m.rotation.x = -Math.PI / 3;
+            m.rotation.y = Math.PI / 5;
+            m.rotation.z = 0;
+        });
+    }
 }
 
 // Initial Run
