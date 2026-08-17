@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Multiplayer Shooter</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-900 overflow-hidden text-white font-sans">
+    
+    <!-- 3D Canvas -->
+    <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full z-0"></canvas>
+
+    <!-- Main Menu UI -->
+    <div id="main-menu" class="absolute top-0 left-0 w-full h-full z-10 flex flex-col items-center justify-center bg-gray-900/80 backdrop-blur-sm">
+        <h1 class="text-6xl font-black mb-8 text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-orange-500 tracking-tighter drop-shadow-lg">
+            ARENA COMBAT
+        </h1>
+        
+        <div class="bg-gray-800/80 p-8 rounded-2xl shadow-2xl border border-gray-700 w-full max-w-md flex flex-col gap-6">
+            <button id="btn-create-lobby" class="w-full py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all duration-300 transform hover:scale-105 shadow-[0_0_15px_rgba(220,38,38,0.5)]">
+                Create Lobby (Host)
+            </button>
+            
+            <div class="relative flex py-2 items-center">
+                <div class="flex-grow border-t border-gray-600"></div>
+                <span class="flex-shrink-0 mx-4 text-gray-400 font-semibold text-sm">OR</span>
+                <div class="flex-grow border-t border-gray-600"></div>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="text" id="input-lobby-code" placeholder="Enter Lobby Code" class="flex-1 bg-gray-900 text-white px-4 py-3 rounded-xl border border-gray-600 focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 font-mono text-center">
+                <button id="btn-join-lobby" class="px-6 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-all duration-300 shadow-[0_0_15px_rgba(37,99,235,0.5)]">
+                    Join
+                </button>
+            </div>
+        </div>
+
+        <div id="loading-status" class="mt-8 text-gray-400 font-medium animate-pulse hidden">
+            Connecting to server...
+        </div>
+    </div>
+
+    <!-- HUD (Hidden by default) -->
+    <div id="hud" class="absolute top-0 left-0 w-full h-full z-10 pointer-events-none hidden">
+        <!-- Top bar -->
+        <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start">
+            <!-- Economy -->
+            <div class="bg-gray-900/60 backdrop-blur-md px-6 py-3 rounded-xl border border-yellow-500/30 flex items-center gap-3">
+                <div class="w-6 h-6 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.5)]"></div>
+                <span id="coin-display" class="font-bold text-2xl text-yellow-400">500</span>
+            </div>
+            
+            <!-- Room Info -->
+            <div class="bg-gray-900/60 backdrop-blur-md px-4 py-2 rounded-xl border border-gray-600 flex flex-col items-end">
+                <span class="text-xs text-gray-400 uppercase tracking-wider">Room Code</span>
+                <span id="hud-room-code" class="font-mono font-bold text-blue-400">----</span>
+            </div>
+        </div>
+
+        <!-- Crosshair -->
+        <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+            <div class="w-1 h-1 bg-white rounded-full"></div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-[15px] w-[2px] h-[6px] bg-white/50"></div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 translate-y-[9px] w-[2px] h-[6px] bg-white/50"></div>
+            <div class="absolute top-1/2 left-1/2 transform -translate-x-[15px] -translate-y-1/2 w-[6px] h-[2px] bg-white/50"></div>
+            <div class="absolute top-1/2 left-1/2 transform translate-x-[9px] -translate-y-1/2 w-[6px] h-[2px] bg-white/50"></div>
+        </div>
+
+        <!-- Health Bar -->
+        <div class="absolute bottom-10 left-10 bg-gray-900/80 p-4 rounded-xl border border-gray-600 w-64">
+            <div class="text-sm font-bold text-gray-400 mb-2 uppercase tracking-wide">Health</div>
+            <div class="w-full bg-gray-700 h-4 rounded-full overflow-hidden">
+                <div id="health-bar-fill" class="bg-gradient-to-r from-green-500 to-green-400 h-full w-full transition-all duration-300"></div>
+            </div>
+        </div>
+
+        <!-- Shop Prompt -->
+        <div class="absolute bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-900/80 px-6 py-2 rounded-lg border border-gray-600">
+            <span class="text-gray-300 text-sm">Press <kbd class="bg-gray-700 px-2 py-1 rounded text-white font-mono">B</kbd> to open Shop</span>
+        </div>
+    </div>
+
+    <!-- Shop UI (Hidden by default) -->
+    <div id="shop-menu" class="absolute top-0 left-0 w-full h-full z-20 flex flex-col items-center justify-center bg-gray-900/95 backdrop-blur-md hidden pointer-events-auto">
+        <h2 class="text-4xl font-black mb-2 text-white">WEAPON SHOP</h2>
+        <p class="text-yellow-400 font-bold mb-8 text-xl">Balance: <span id="shop-coins">500</span> Coins</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full px-8">
+            <!-- Weapon 1 -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-gray-600 flex flex-col items-center hover:border-white transition-colors">
+                <h3 class="text-xl font-bold text-white mb-2">Standard Rifle</h3>
+                <p class="text-gray-400 text-sm mb-4 text-center">Balanced fire rate and damage.</p>
+                <div class="flex-grow"></div>
+                <button class="w-full py-2 bg-gray-600 text-white font-bold rounded cursor-not-allowed opacity-50">Equipped</button>
+            </div>
+            
+            <!-- Weapon 2 -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)] flex flex-col items-center hover:border-blue-400 transition-colors">
+                <h3 class="text-xl font-bold text-blue-400 mb-2">Rapid Fire SMG</h3>
+                <p class="text-gray-400 text-sm mb-4 text-center">Extremely fast fire rate. Blue tint.</p>
+                <div class="flex-grow"></div>
+                <button id="btn-buy-smg" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded transition-colors shadow-lg">Buy (200 Coins)</button>
+            </div>
+
+            <!-- Weapon 3 -->
+            <div class="bg-gray-800 p-6 rounded-xl border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)] flex flex-col items-center hover:border-purple-400 transition-colors">
+                <h3 class="text-xl font-bold text-purple-400 mb-2">Heavy Sniper</h3>
+                <p class="text-gray-400 text-sm mb-4 text-center">Slow fire rate, massive damage. Purple tint.</p>
+                <div class="flex-grow"></div>
+                <button id="btn-buy-sniper" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded transition-colors shadow-lg">Buy (400 Coins)</button>
+            </div>
+        </div>
+        
+        <button id="btn-close-shop" class="mt-12 px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-colors">Close Shop</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    
+    <!-- Import Map for ES Modules -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+                "cannon-es": "https://unpkg.com/cannon-es@0.20.0/dist/cannon-es.js"
+            }
+        }
+    </script>
+    
+    <!-- Main Logic -->
+    <script type="module" src="main.js"></script>
+</body>
+</html>

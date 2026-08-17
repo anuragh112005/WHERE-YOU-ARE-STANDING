@@ -1,0 +1,142 @@
+{
+	"assetNamespace": "fab",
+	"listing":
+	{
+		"averageRating": 0,
+		"createdAt": "",
+		"description": "<p>Can be used for any game creation. FPS TPS RTS</p>\n<p>In the Pack: Models, Textures</p>\n<p>This model is full modular. All objects in the model can be modified. </p>\n<p>Textures can be re-designed and re-applied.</p>\n<p>All are game ready and animation ready.</p>\n<p>These maps are royalty free and can be use for games or everything else.</p>\n<p>Sharing or distribution not allowed. These Models are under contract from both Designer and Publisher!</p>",
+		"isAiForbidden": false,
+		"isAiGenerated": false,
+		"lastUpdatedAt": "",
+		"listingType": "3d-model",
+		"media": "",
+		"publishedAt": "2026-07-24T08:03:56.071015Z",
+		"reviewCount": 0,
+		"thumbnail": "https://media.fab.com/image_previews/gallery_images/57fcb3c3-a3de-4c68-8a8e-88c3487b1b0b/5076e799-1969-4828-a133-9fc85ed8a13c.jpeg",
+		"title": "FPS Shooter Game Arena Map v4",
+		"uid": "df281796-1c37-441c-b724-5e89ac9a091d",
+		"updatedAt": "",
+		"user":
+		{
+			"coverImageUrl": "https://cdn1.epicgames.com/fab/seller/o-szu2mxh8g6glvgvnu299qu6jhyh4l7/cover/471dfb73.jpg",
+			"profileImageUrl": "https://cdn1.epicgames.com/fab/seller/o-szu2mxh8g6glvgvnu299qu6jhyh4l7/profileImage/blob-500x500-3f829ad79729202548637f51e6a24b24.jpg",
+			"sellerName": "Heart State Games",
+			"uid": "3cdf2684-8ea7-44dc-a9d5-45cf2ff9bfce"
+		},
+		"tags": [
+			{
+				"name": "Rts",
+				"slug": "rts",
+				"uid": "06062a54-470b-47c1-8dcf-9f2d538de18a"
+			},
+			{
+				"name": "Fps",
+				"slug": "fps",
+				"uid": "14fc2ff6-5e86-46c6-a1f1-668f1de87697"
+			},
+			{
+				"name": "Arena",
+				"slug": "arena",
+				"uid": "22b95366-258d-4d2a-94f1-fa6f44f467db"
+			},
+			{
+				"name": "Lowpoly",
+				"slug": "lowpoly",
+				"uid": "451806dc-649e-43b7-9c2e-a54485de14b6"
+			},
+			{
+				"name": "Cub",
+				"slug": "cub",
+				"uid": "5b710dc2-15aa-4518-83cc-1ca8c8a565e7"
+			},
+			{
+				"name": "Stair",
+				"slug": "stair",
+				"uid": "60ea01c9-da40-4645-80b3-b87934903ee3"
+			},
+			{
+				"name": "Stage",
+				"slug": "stage",
+				"uid": "75ed3e3e-a174-451a-8be9-5730ed014d3c"
+			},
+			{
+				"name": "Level",
+				"slug": "level",
+				"uid": "8f2cd337-060b-438b-8d2d-62808026db6f"
+			},
+			{
+				"name": "Playground",
+				"slug": "playground",
+				"uid": "aa6b65c7-3259-4637-bf8e-dff27d8d9ed5"
+			},
+			{
+				"name": "Battle",
+				"slug": "battle",
+				"uid": "b0cf7ddd-eaeb-4d6e-835c-7411ee6ae197"
+			},
+			{
+				"name": "Shoe",
+				"slug": "shoe",
+				"uid": "d4c52420-d026-4f6f-bfc7-40fc032f60d3"
+			},
+			{
+				"name": "Map",
+				"slug": "map",
+				"uid": "f8948c85-2a0d-4387-9ce8-030393e4a7c5"
+			}
+		],
+		"category":
+		{
+			"name": "Military / Warzone",
+			"path": "environments/military-warzone",
+			"slug": "environments--military-warzone",
+			"uid": "11e76186-39e1-4f4d-8bdf-bfee73499db2"
+		},
+		"assetFormats": [
+			{
+				"assetFormatType":
+				{
+					"name": "FBX",
+					"groupName": "3D Exchange Formats",
+					"code": "fbx",
+					"icon": "cube",
+					"extensions": [
+						"fbx"
+					]
+				}
+			},
+			{
+				"assetFormatType":
+				{
+					"name": "Converted Files",
+					"groupName": "",
+					"code": "converted-files",
+					"icon": "cube",
+					"extensions": [
+						"gltf",
+						"glb",
+						"usdz"
+					]
+				}
+			}
+		],
+		"_PluginMetas":
+		{
+			"apiDataVersion": "0.0.1",
+			"entitlementUid": "a10e267f-f69e-4333-8e7b-f14ab538e7b8",
+			"cacheSize": 0,
+			"downloaded": []
+		}
+	},
+	"target": "",
+	"quality": "",
+	"format": "glb",
+	"fileId": "2b544786-a44f-459b-b4fb-ba29ee9a81d6",
+	"platformIncluded": "",
+	"distributionPointBaseUrls": [],
+	"distributionMethod": "",
+	"entitlementUid": "a10e267f-f69e-4333-8e7b-f14ab538e7b8",
+	"invertedNormal": false,
+	"isConverted": true,
+	"isQuixel": false
+}

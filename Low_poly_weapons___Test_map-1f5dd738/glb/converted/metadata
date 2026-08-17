@@ -1,0 +1,142 @@
+{
+	"assetNamespace": "fab",
+	"listing":
+	{
+		"averageRating": 5,
+		"createdAt": "",
+		"description": "<p>A collection of 29 low poly weapons, you can customize their color and parts. It also includes a small test map.</p><p></p><p><strong>&nbsp;I hope you find it useful :D</strong></p>",
+		"isAiForbidden": false,
+		"isAiGenerated": false,
+		"lastUpdatedAt": "",
+		"listingType": "3d-model",
+		"media": "https://media.fab.com/image_previews/gallery_images/a0233460-1beb-4449-b970-f7427764e0e6/0d61c8e0-3bbd-4831-aa77-24393530a257.png",
+		"publishedAt": "2025-06-06T01:25:53.800129Z",
+		"reviewCount": 5,
+		"thumbnail": "https://media.fab.com/image_previews/gallery_images/40420a8b-2b4b-4d9e-95b3-88140b25f89a/78cc9cb3-19cd-4f7e-aea3-6bc5ab7cbf2a.png",
+		"title": "Low poly weapons + Test map",
+		"uid": "1f5dd738-5316-4845-9cbe-6bdc4a6e1f5f",
+		"updatedAt": "",
+		"user":
+		{
+			"coverImageUrl": "https://cdn1.epicgames.com/fab/seller/o-ktqkyjejqfd9zd443sebg4rm2ewf5h/backgroundImage/blob-1920x540-8a5db07c3febe1436f674c6fb3ffc434.jpg",
+			"profileImageUrl": "https://cdn1.epicgames.com/fab/seller/o-ktqkyjejqfd9zd443sebg4rm2ewf5h/profileImage/blob-500x500-08a32ca2aa1d6a897e39c0a7bc9f4bd3.jpg",
+			"sellerName": "Cosmoart",
+			"uid": "dcd2a5f1-181b-4d3b-9cf4-c7650c924990"
+		},
+		"tags": [
+			{
+				"name": "Sniper",
+				"slug": "sniper",
+				"uid": "1d1aae3b-a9cf-48e4-84a5-fcae971b27d0"
+			},
+			{
+				"name": "Lowres",
+				"slug": "lowres",
+				"uid": "21cf2826-c445-46b4-8963-99a3a920f304"
+			},
+			{
+				"name": "Lowpoly",
+				"slug": "lowpoly",
+				"uid": "451806dc-649e-43b7-9c2e-a54485de14b6"
+			},
+			{
+				"name": "Shooter",
+				"slug": "shooter",
+				"uid": "4a366c91-86b0-4b87-9483-ef9cb35dbea1"
+			},
+			{
+				"name": "Shoot",
+				"slug": "shoot",
+				"uid": "61432029-2c4b-49c8-921a-1f16f1eded12"
+			},
+			{
+				"name": "House",
+				"slug": "house",
+				"uid": "6596d504-e433-42e9-a760-b829827af869"
+			},
+			{
+				"name": "Shotgun",
+				"slug": "shotgun",
+				"uid": "ae9a4b15-7de3-4a21-976f-71365b33e14d"
+			},
+			{
+				"name": "Weapon",
+				"slug": "weapon",
+				"uid": "cb5288be-1972-4807-9f2a-5f33ddffd407"
+			},
+			{
+				"name": "Assault",
+				"slug": "assault",
+				"uid": "cc54ef86-f690-4751-8b9a-ba3c27253e72"
+			},
+			{
+				"name": "Rifle",
+				"slug": "rifle",
+				"uid": "dbe0f4e0-bef2-484c-884e-58b1b6bb924d"
+			},
+			{
+				"name": "Custom",
+				"slug": "custom",
+				"uid": "f33ec746-6ae6-44c5-989f-9a2fbcd3e199"
+			},
+			{
+				"name": "Map",
+				"slug": "map",
+				"uid": "f8948c85-2a0d-4387-9ce8-030393e4a7c5"
+			}
+		],
+		"category":
+		{
+			"name": "Guns",
+			"path": "weapons-combat/guns",
+			"slug": "weapons-combat--guns",
+			"uid": "a6b2e44b-eb66-4ee8-a5ad-18036d7d1688"
+		},
+		"assetFormats": [
+			{
+				"assetFormatType":
+				{
+					"name": "FBX",
+					"groupName": "3D Exchange Formats",
+					"code": "fbx",
+					"icon": "cube",
+					"extensions": [
+						"fbx"
+					]
+				}
+			},
+			{
+				"assetFormatType":
+				{
+					"name": "Converted Files",
+					"groupName": "",
+					"code": "converted-files",
+					"icon": "cube",
+					"extensions": [
+						"gltf",
+						"glb",
+						"usdz"
+					]
+				}
+			}
+		],
+		"_PluginMetas":
+		{
+			"apiDataVersion": "0.0.1",
+			"entitlementUid": "75666971-7623-4c60-8d38-dec9c1ecbdf1",
+			"cacheSize": 0,
+			"downloaded": []
+		}
+	},
+	"target": "",
+	"quality": "",
+	"format": "glb",
+	"fileId": "a7077222-35d4-4758-b5e4-7d8b3ef2f003",
+	"platformIncluded": "",
+	"distributionPointBaseUrls": [],
+	"distributionMethod": "",
+	"entitlementUid": "75666971-7623-4c60-8d38-dec9c1ecbdf1",
+	"invertedNormal": false,
+	"isConverted": true,
+	"isQuixel": false
+}

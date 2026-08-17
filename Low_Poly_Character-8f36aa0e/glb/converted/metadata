@@ -1,0 +1,107 @@
+{
+	"assetNamespace": "fab",
+	"listing":
+	{
+		"averageRating": 0,
+		"createdAt": "",
+		"description": "<p>This low poly character model is a versatile base for various game genres, ideal for serving as a <strong>casual NPC</strong>, a <strong>player avatar</strong>, or a background <strong>Citizen</strong> in a stylized city or open-world game.</p><p><strong>Features : Lowpoly, UV Unwrapped</strong></p>",
+		"isAiForbidden": false,
+		"isAiGenerated": false,
+		"lastUpdatedAt": "",
+		"listingType": "3d-model",
+		"media": "https://media.fab.com/image_previews/gallery_images/1e07e78e-fe60-47d3-a9e2-090b975b8ea7/3cf57571-5c95-4366-8828-61f8c988ee20.png",
+		"publishedAt": "2025-11-03T14:20:52.494944Z",
+		"reviewCount": 0,
+		"thumbnail": "https://media.fab.com/image_previews/gallery_images/3b3c89c6-22e4-4071-a775-f56e7dd00c94/7f049c7c-adaa-43b1-94c9-16fdce51d990.png",
+		"title": "Low Poly Character",
+		"uid": "8f36aa0e-d402-4c21-a81f-06367a435657",
+		"updatedAt": "",
+		"user":
+		{
+			"coverImageUrl": "https://cdn1.epicgames.com/fab/seller/o-axmfdh4kgmtxfypy32mqy6dthxkp96/cover/4688eaff.jpg",
+			"profileImageUrl": "https://cdn1.epicgames.com/fab/seller/o-axmfdh4kgmtxfypy32mqy6dthxkp96/profile/cc1d6314.jpg",
+			"sellerName": "Ndevisuals",
+			"uid": "11422d6d-4e96-4450-9eda-97116914aa09"
+		},
+		"tags": [
+			{
+				"name": "Lowpoly",
+				"slug": "lowpoly",
+				"uid": "451806dc-649e-43b7-9c2e-a54485de14b6"
+			},
+			{
+				"name": "Cartoon",
+				"slug": "cartoon",
+				"uid": "8bc8f154-d25c-419b-8ae1-740693004da5"
+			},
+			{
+				"name": "Npc",
+				"slug": "npc",
+				"uid": "90d18fed-cb99-4f6f-813e-693cbb1e774c"
+			},
+			{
+				"name": "Stylized",
+				"slug": "stylized",
+				"uid": "b584e222-c5bf-43b3-b9ed-f937eaf169c1"
+			},
+			{
+				"name": "Character",
+				"slug": "character",
+				"uid": "f07e8c06-66ed-4396-81cf-108f0afcb6d6"
+			}
+		],
+		"category":
+		{
+			"name": "Humans",
+			"path": "characters-creatures/humans",
+			"slug": "characters-creatures--humans",
+			"uid": "0a4f7590-4376-400b-a6e4-c7a658cbab47"
+		},
+		"assetFormats": [
+			{
+				"assetFormatType":
+				{
+					"name": "FBX",
+					"groupName": "3D Exchange Formats",
+					"code": "fbx",
+					"icon": "cube",
+					"extensions": [
+						"fbx"
+					]
+				}
+			},
+			{
+				"assetFormatType":
+				{
+					"name": "Converted Files",
+					"groupName": "",
+					"code": "converted-files",
+					"icon": "cube",
+					"extensions": [
+						"gltf",
+						"glb",
+						"usdz"
+					]
+				}
+			}
+		],
+		"_PluginMetas":
+		{
+			"apiDataVersion": "0.0.1",
+			"entitlementUid": "c965be7b-d8d8-428b-9fb4-847974fcb184",
+			"cacheSize": 0,
+			"downloaded": []
+		}
+	},
+	"target": "",
+	"quality": "",
+	"format": "glb",
+	"fileId": "7bf6f6ce-8019-4752-a338-64165ea55c13",
+	"platformIncluded": "",
+	"distributionPointBaseUrls": [],
+	"distributionMethod": "",
+	"entitlementUid": "c965be7b-d8d8-428b-9fb4-847974fcb184",
+	"invertedNormal": false,
+	"isConverted": true,
+	"isQuixel": false
+}

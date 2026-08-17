@@ -1,0 +1,29 @@
+/* Custom CSS styles, mostly handled by Tailwind, but custom animations or resets can go here */
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+canvas {
+    display: block;
+    outline: none;
+}
+
+/* Scrollbar styling for shop/menus if needed */
+::-webkit-scrollbar {
+    width: 8px;
+}
+::-webkit-scrollbar-track {
+    background: rgba(17, 24, 39, 0.8); 
+}
+::-webkit-scrollbar-thumb {
+    background: rgba(75, 85, 99, 0.8); 
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(107, 114, 128, 0.8); 
+}
