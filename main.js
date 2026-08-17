@@ -373,33 +373,70 @@ async function loadPlayer() {
 
 async function loadWeapons() {
     try {
-        const gltf = await gltfLoader.loadAsync('./Low_poly_weapons___Test_map-1f5dd738/glb/converted/low_poly_guns_fbx.glb');
+        // Use the Free Pack weapon GLB - it has proper gun meshes (AK47, M16, pistol)
+        const gltf = await gltfLoader.loadAsync('./Free_Pack_-_Weapon-3ee0ae1f/glb/converted/free_pack_weapon.glb');
         
-        weaponMesh = gltf.scene;
+        // Log what's in the scene so we know what to pick
+        const meshNames = [];
+        gltf.scene.traverse((child) => {
+            if (child.isMesh) meshNames.push(child.name);
+        });
+        console.log('Weapon meshes found:', meshNames);
         
-        // Auto-scale the weapon so it's approx 1 meter long
-        const gunBox = new THREE.Box3().setFromObject(weaponMesh);
-        const gunSize = gunBox.getSize(new THREE.Vector3());
-        const maxDim = Math.max(gunSize.x, gunSize.y, gunSize.z);
-        if (maxDim > 0) {
-            const scaleObj = 1.0 / maxDim; // force max dimension to 1 unit
-            weaponMesh.scale.set(scaleObj, scaleObj, scaleObj);
-        }
-
-        // Adjust position so it looks like it's held by the right hand
-        weaponMesh.position.set(0.6, 0.8, 0.5); 
-        weaponMesh.rotation.y = Math.PI; // point forward
+        // The scene may contain multiple weapons + a test map floor.
+        // We want to find the largest single weapon object (not the flat floor plane).
+        let bestGun = null;
+        let bestVolume = 0;
         
-        weaponMesh.traverse((child) => {
+        gltf.scene.traverse((child) => {
             if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
+                const box = new THREE.Box3().setFromObject(child);
+                const size = box.getSize(new THREE.Vector3());
+                
+                // Skip flat planes (the test map floor - has very small Y dimension)
+                if (size.y < 0.05) return;
+                
+                const volume = size.x * size.y * size.z;
+                if (volume > bestVolume) {
+                    bestVolume = volume;
+                    bestGun = child;
+                }
             }
         });
         
+        if (!bestGun) {
+            console.warn('Could not find a suitable gun mesh, using entire scene');
+            bestGun = gltf.scene;
+        }
+        
+        console.log('Selected gun mesh:', bestGun.name);
+        
+        // Clone it so we detach it cleanly from original parent
+        weaponMesh = bestGun.clone();
+        
+        // Auto-scale: we want the gun to be about 1.2 units long
+        const gunBox = new THREE.Box3().setFromObject(weaponMesh);
+        const gunSize = gunBox.getSize(new THREE.Vector3());
+        const maxDim = Math.max(gunSize.x, gunSize.y, gunSize.z);
+        const desiredSize = 1.2;
+        if (maxDim > 0) {
+            const s = desiredSize / maxDim;
+            weaponMesh.scale.set(s, s, s);
+        }
+
+        // Position: right side of character, at hand height
+        // These offsets are relative to the playerMesh (character body center)
+        weaponMesh.position.set(0.5, 0.9, 0.3);
+        weaponMesh.rotation.set(0, Math.PI, 0); // point forward
+        
+        weaponMesh.castShadow = true;
+        weaponMesh.receiveShadow = true;
+        
         playerMesh.add(weaponMesh);
+        console.log('Gun attached to player!');
+        
     } catch (err) {
-        console.error("Failed to load weapons", err);
+        console.error('Failed to load weapons:', err);
     }
 }
 
@@ -427,6 +464,7 @@ async function loadEnvironment() {
         // Calculate bounding box to center the arena and put its floor at y=0
         const box = new THREE.Box3().setFromObject(mapGroup);
         const center = box.getCenter(new THREE.Vector3());
+        const arenaSize = box.getSize(new THREE.Vector3());
         
         mapGroup.position.x = -center.x;
         mapGroup.position.z = -center.z;
@@ -442,8 +480,13 @@ async function loadEnvironment() {
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         world.addBody(groundBody);
 
-        // Spawn player high up in the middle so they fall to the floor safely
-        playerBody.position.set(0, 10, 0);
+        // Spawn player INSIDE the arena at a safe interior point
+        // Use 1/4 of the arena size inward from center to guarantee interior spawn
+        const spawnX = arenaSize.x * 0.1;
+        const spawnZ = arenaSize.z * 0.1;
+        playerBody.position.set(spawnX, 8, spawnZ);
+        playerBody.velocity.set(0, 0, 0);
+        console.log(`Arena size: ${arenaSize.x.toFixed(1)} x ${arenaSize.z.toFixed(1)}, spawning at (${spawnX.toFixed(1)}, 8, ${spawnZ.toFixed(1)})`);
 
         loadingStatus.innerText = "Arena Loaded!";
         setTimeout(() => loadingStatus.classList.add('hidden'), 1000);
