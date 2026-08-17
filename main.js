@@ -425,6 +425,8 @@ async function loadPlayer() {
     }
 }
 
+const WEAPON_HAND_POS = new THREE.Vector3(0.38, 0.50, 0.10);
+
 // Load weapon by catalog index
 async function loadWeaponByIndex(idx) {
     const def = WEAPONS[idx];
@@ -441,46 +443,49 @@ async function loadWeaponByIndex(idx) {
 
     try {
         const gltf = await gltfLoader.loadAsync(def.file);
-        weaponMesh = gltf.scene;
+        const rawMesh = gltf.scene;
 
-        // Auto-scale to 1 unit (longest dimension)
-        const gunBox = new THREE.Box3().setFromObject(weaponMesh);
+        // Create container group for proper pivot and centering
+        const gunContainer = new THREE.Group();
+
+        rawMesh.updateMatrixWorld(true);
+        const gunBox = new THREE.Box3().setFromObject(rawMesh);
+        const gunCenter = gunBox.getCenter(new THREE.Vector3());
         const gunSize = gunBox.getSize(new THREE.Vector3());
+
+        // Center raw mesh at (0,0,0) inside container
+        rawMesh.position.sub(gunCenter);
+        gunContainer.add(rawMesh);
+
+        // Auto-scale to handheld weapon size (~0.75 units long)
         const maxDim = Math.max(gunSize.x, gunSize.y, gunSize.z);
-        if (maxDim > 0) weaponMesh.scale.set(1 / maxDim, 1 / maxDim, 1 / maxDim);
-
-        // Auto-orient: figure out which axis is the gun barrel
-        // Most guns are long along X or Z. We want the barrel pointing forward (-Z in Three.js).
-        // After scaling, recalculate size
-        const scaledBox = new THREE.Box3().setFromObject(weaponMesh);
-        const scaledSize = scaledBox.getSize(new THREE.Vector3());
-
-        // Reset rotation first
-        weaponMesh.rotation.set(0, 0, 0);
-
-        if (scaledSize.x > scaledSize.y && scaledSize.x > scaledSize.z) {
-            // Barrel along X axis — rotate 90° around Y so it faces forward
-            weaponMesh.rotation.set(0, -Math.PI / 2, 0);
-        } else if (scaledSize.z > scaledSize.y) {
-            // Barrel along Z — might need to flip 180° depending on orientation
-            // Check if gun appears upside down (Y-size very small = flat = needs flip)
-            weaponMesh.rotation.set(0, Math.PI, 0);
-        }
-        // If Y is largest — gun standing upright — rotate to horizontal
-        if (scaledSize.y > scaledSize.x && scaledSize.y > scaledSize.z) {
-            weaponMesh.rotation.set(Math.PI / 2, 0, 0);
+        if (maxDim > 0) {
+            const s = 0.75 / maxDim;
+            gunContainer.scale.set(s, s, s);
         }
 
-        weaponMesh.traverse(child => {
-            if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
+        // Auto-orient based on weapon dimensions to face forward
+        if (gunSize.x > gunSize.y && gunSize.x > gunSize.z) {
+            rawMesh.rotation.y = -Math.PI / 2;
+        } else if (gunSize.y > gunSize.x && gunSize.y > gunSize.z) {
+            rawMesh.rotation.x = Math.PI / 2;
+        } else {
+            rawMesh.rotation.y = Math.PI;
+        }
+
+        gunContainer.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
         });
 
-        // Attach directly to playerMesh — right side, at chest/arm height
-        // x=right, y=up (chest level from mesh origin), z=forward
-        weaponMesh.position.set(0.45, 0.9, 0.15);
+        // Place gun directly in the character's right hand
+        gunContainer.position.copy(WEAPON_HAND_POS);
+        weaponMesh = gunContainer;
         playerMesh.add(weaponMesh);
-        console.log(`Weapon loaded: ${def.name}, size: ${scaledSize.x.toFixed(2)} ${scaledSize.y.toFixed(2)} ${scaledSize.z.toFixed(2)}`);
-    } catch(err) {
+        console.log(`Weapon attached in hand: ${def.name}`);
+    } catch (err) {
         console.error(`Failed to load weapon ${def.name}:`, err);
     }
 }
@@ -684,8 +689,10 @@ function updatePlayer(delta) {
             recoilOffset -= delta * 2;
             if (recoilOffset < 0) recoilOffset = 0;
         }
-        // Offset weapon Z position based on recoil
-        weaponMesh.position.z = 0.5 + recoilOffset;
+        // Maintain hand anchor position and apply kickback along Z
+        weaponMesh.position.x = WEAPON_HAND_POS.x;
+        weaponMesh.position.y = WEAPON_HAND_POS.y;
+        weaponMesh.position.z = WEAPON_HAND_POS.z + recoilOffset;
     }
 }
 
