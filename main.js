@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 import * as CANNON from 'cannon-es';
 
 // Game State
@@ -135,6 +136,8 @@ scene.add(dirLight);
 
 // Loaders
 const gltfLoader = new GLTFLoader();
+const fbxLoader = new FBXLoader();
+const texLoader = new THREE.TextureLoader();
 
 // Resize handler
 window.addEventListener('resize', () => {
@@ -378,6 +381,9 @@ function handleNetworkShoot(data) {
     setTimeout(() => { scene.remove(spark); spark.geometry.dispose(); spark.material.dispose(); }, 200);
 }
 
+let playerBones = {};
+let playerRightHand = null;
+
 // Phase 2: Setup Player Physics and Model
 async function loadPlayer() {
     // Smooth capsule body (2 spheres) so the player glides smoothly and never snags
@@ -396,35 +402,80 @@ async function loadPlayer() {
     world.addBody(playerBody);
 
     try {
-        const gltf = await gltfLoader.loadAsync('./Low_Poly_Character-8f36aa0e/glb/converted/source.glb');
-        playerMesh = gltf.scene;
+        // Load the new Stylized Paladin character
+        const fbx = await fbxLoader.loadAsync('./New_Character/fbx/stylized_paladin_fbx_extracted/Stylized_Paladin.fbx');
+        playerMesh = fbx;
 
-        // Play built-in GLB animations if any
-        if (gltf.animations && gltf.animations.length > 0) {
-            const mixer = new THREE.AnimationMixer(playerMesh);
-            gltf.animations.forEach(clip => mixer.clipAction(clip).play());
-            playerMesh.userData.mixer = mixer;
-            console.log('Playing', gltf.animations.length, 'built-in animations');
+        // Auto-scale FBX model so height is 1.7 units
+        const box = new THREE.Box3().setFromObject(fbx);
+        const size = box.getSize(new THREE.Vector3());
+        if (size.y > 0) {
+            const s = 1.7 / size.y;
+            fbx.scale.set(s, s, s);
         }
 
-        // Tint all meshes
-        playerMesh.traverse((child) => {
-            if (!child.isMesh) return;
-            child.castShadow = true;
-            child.receiveShadow = true;
-            if (child.material) {
-                child.material = child.material.clone();
-                child.material.color.setHex(colorIndex);
+        // Textures
+        const armorTex = texLoader.load('./New_Character/fbx/stylized_paladin_fbx_extracted/Textures/Armor_Base_color.png');
+        const bodyTex = texLoader.load('./New_Character/fbx/stylized_paladin_fbx_extracted/Textures/Body_Base_color.png');
+        const hairTex = texLoader.load('./New_Character/fbx/stylized_paladin_fbx_extracted/Textures/Hair_Color.png');
+
+        playerBones = {};
+        playerRightHand = null;
+
+        fbx.traverse((child) => {
+            if (child.isBone) {
+                const name = child.name.toLowerCase();
+                playerBones[name] = child;
+                if (name.includes('righthand') || name.includes('hand_r') || name.includes('hand.r') || (name.includes('hand') && name.includes('r'))) {
+                    playerRightHand = child;
+                }
+            }
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+                const mName = (child.name || '').toLowerCase();
+                if (child.material) {
+                    if (mName.includes('armor')) child.material.map = armorTex;
+                    else if (mName.includes('hair')) child.material.map = hairTex;
+                    else if (mName.includes('body') || mName.includes('head') || mName.includes('paladin')) child.material.map = bodyTex;
+                    child.material.needsUpdate = true;
+                }
             }
         });
 
-        playerMesh.scale.set(1, 1, 1);
+        console.log("Paladin bones loaded:", Object.keys(playerBones).length);
+
+        // Pose character into combat aiming stance
+        for (const [name, bone] of Object.entries(playerBones)) {
+            if (name.includes('rightarm') || name.includes('upperarm_r') || name.includes('arm_r') || name.includes('shoulder_r')) {
+                bone.rotation.x = -Math.PI / 4;
+                bone.rotation.z = Math.PI / 8;
+            }
+            if (name.includes('rightforearm') || name.includes('lowerarm_r') || name.includes('forearm_r')) {
+                bone.rotation.y = -Math.PI / 6;
+            }
+            if (name.includes('leftarm') || name.includes('upperarm_l') || name.includes('arm_l') || name.includes('shoulder_l')) {
+                bone.rotation.x = -Math.PI / 3;
+                bone.rotation.y = Math.PI / 4;
+            }
+            if (name.includes('leftforearm') || name.includes('lowerarm_l') || name.includes('forearm_l')) {
+                bone.rotation.y = Math.PI / 3;
+            }
+        }
+
+        // If built-in animations exist, play them
+        if (fbx.animations && fbx.animations.length > 0) {
+            const mixer = new THREE.AnimationMixer(fbx);
+            fbx.animations.forEach(clip => mixer.clipAction(clip).play());
+            playerMesh.userData.mixer = mixer;
+        }
+
         scene.add(playerMesh);
 
         // Load default weapon (AK-47)
         loadWeaponByIndex(0);
     } catch(err) {
-        console.error("Failed to load player mesh:", err);
+        console.error("Failed to load new Paladin character:", err);
     }
 }
 
@@ -648,19 +699,37 @@ function updatePlayer(delta) {
         const isMoving = speedVal > 0.5;
         const bobRate  = isCrouching ? 8 : (keys.shift ? 18 : 12);
 
-        // Update GLB animation mixer if present
+        // Update animation mixer if present
         if (playerMesh.userData.mixer) {
             playerMesh.userData.mixer.update(delta);
         }
 
-        // Whole-body procedural animation (safe — does not touch individual limb meshes)
+        // Bone-driven running / walking leg cycle
         if (isMoving) {
-            // Walk/run body bob up-down
-            playerMesh.position.y += Math.sin(time * bobRate * 2) * 0.04;
-            // Subtle side lean while running
-            playerMesh.rotation.z = Math.sin(time * bobRate * 0.5) * 0.03;
+            const legSwing = Math.sin(time * bobRate) * 0.6;
+            for (const [name, bone] of Object.entries(playerBones)) {
+                if (name.includes('thigh_l') || name.includes('leftupleg') || name.includes('leg_l')) {
+                    bone.rotation.x = legSwing;
+                }
+                if (name.includes('thigh_r') || name.includes('rightupleg') || name.includes('leg_r')) {
+                    bone.rotation.x = -legSwing;
+                }
+                if (name.includes('calf_l') || name.includes('leftleg') || name.includes('lowerleg_l')) {
+                    bone.rotation.x = Math.max(0, -legSwing * 0.7);
+                }
+                if (name.includes('calf_r') || name.includes('rightleg') || name.includes('lowerleg_r')) {
+                    bone.rotation.x = Math.max(0, legSwing * 0.7);
+                }
+            }
+            playerMesh.position.y += Math.sin(time * bobRate * 2) * 0.03;
+            playerMesh.rotation.z = Math.sin(time * bobRate * 0.5) * 0.02;
         } else {
-            // Idle breathing sway
+            // Idle stance
+            for (const [name, bone] of Object.entries(playerBones)) {
+                if (name.includes('leg') || name.includes('thigh') || name.includes('calf')) {
+                    bone.rotation.x = 0;
+                }
+            }
             playerMesh.position.y += Math.sin(time * 1.5) * 0.01;
             playerMesh.rotation.z = 0;
         }
