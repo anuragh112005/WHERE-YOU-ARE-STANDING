@@ -2,11 +2,18 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ARENA COMBAT - Cyberpunk Tactical TPS</title>
+    <!-- PWA Web App Meta Tags -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#050811">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ArenaCombat">
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css?v=5.0">
+    <link rel="stylesheet" href="style.css?v=6.0">
 </head>
 <body class="bg-[#050811] overflow-hidden text-white font-sans">
     
@@ -378,8 +385,35 @@
             </div>
         </div>
 
-        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-md px-6 py-2 rounded-xl border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+        <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 bg-black/70 backdrop-blur-md px-6 py-2 rounded-xl border border-emerald-500/40 shadow-[0_0_15px_rgba(16,185,129,0.2)] hidden md:block">
             <span class="text-emerald-300 text-xs font-bold tracking-wide">Press <kbd class="bg-emerald-950 px-2 py-0.5 rounded text-emerald-400 font-mono border border-emerald-500/50">B</kbd> for In-Match Tactical Armory</span>
+        </div>
+
+        <!-- Mobile On-Screen Touch Controls Overlay -->
+        <div id="mobile-controls-overlay" class="absolute inset-0 pointer-events-none z-30 select-none">
+            <!-- Left Virtual Joystick -->
+            <div class="absolute bottom-6 left-6 pointer-events-auto">
+                <div id="touch-joystick-base">
+                    <div id="touch-joystick-thumb"></div>
+                </div>
+            </div>
+
+            <!-- Right Action Buttons (PUBG Mobile Style) -->
+            <div class="absolute bottom-6 right-6 flex flex-col items-end gap-3 pointer-events-auto">
+                <!-- Top Mini Action Bar -->
+                <div class="flex items-center gap-3">
+                    <button id="btn-touch-shop" class="touch-btn touch-btn-sub text-white text-xl" title="Open Shop (B)">🛒</button>
+                    <button id="btn-touch-grenade" class="touch-btn touch-btn-sub text-white text-xl" title="Throw Grenade (G)">💣</button>
+                    <button id="btn-touch-reload" class="touch-btn touch-btn-sub text-white text-xl" title="Reload (R)">🔄</button>
+                </div>
+
+                <!-- Main Action Buttons -->
+                <div class="flex items-center gap-3">
+                    <button id="btn-touch-jump" class="touch-btn touch-btn-jump text-white text-2xl font-bold" title="Jump (Space)">🦘</button>
+                    <button id="btn-touch-ads" class="touch-btn touch-btn-ads text-white text-2xl font-bold" title="ADS Scope">🔍</button>
+                    <button id="btn-touch-fire" class="touch-btn touch-btn-fire text-white text-3xl font-bold" title="Fire">🔥</button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -540,6 +574,15 @@
         }
     </script>
 
-    <script type="module" src="main.js?v=5.0"></script>
+    <script type="module" src="main.js?v=6.0"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
+        }
+    </script>
 </body>
 </html>

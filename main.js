@@ -1152,6 +1152,191 @@ window.addEventListener('mouseup', (e) => {
 window.addEventListener('contextmenu', e => e.preventDefault());
 
 // =========================================================
+// MOBILE TOUCH CONTROLS (VIRTUAL JOYSTICK & TOUCH ACTIONS)
+// =========================================================
+const joystickBase = document.getElementById('touch-joystick-base');
+const joystickThumb = document.getElementById('touch-joystick-thumb');
+let joystickTouchId = null;
+let joystickCenter = { x: 0, y: 0 };
+const maxJoystickRadius = 45;
+
+if (joystickBase) {
+    joystickBase.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        const touch = e.changedTouches[0];
+        joystickTouchId = touch.identifier;
+        const rect = joystickBase.getBoundingClientRect();
+        joystickCenter = {
+            x: rect.left + rect.width / 2,
+            y: rect.top + rect.height / 2
+        };
+        handleJoystickMove(touch.clientX, touch.clientY);
+    }, { passive: false });
+
+    window.addEventListener('touchmove', (e) => {
+        if (joystickTouchId === null) return;
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            const touch = e.changedTouches[i];
+            if (touch.identifier === joystickTouchId) {
+                handleJoystickMove(touch.clientX, touch.clientY);
+                break;
+            }
+        }
+    }, { passive: false });
+
+    const resetJoystick = (e) => {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+            if (e.changedTouches[i].identifier === joystickTouchId) {
+                joystickTouchId = null;
+                if (joystickThumb) {
+                    joystickThumb.style.transform = 'translate(-50%, -50%)';
+                }
+                keys.w = false;
+                keys.s = false;
+                keys.a = false;
+                keys.d = false;
+                break;
+            }
+        }
+    };
+
+    window.addEventListener('touchend', resetJoystick);
+    window.addEventListener('touchcancel', resetJoystick);
+}
+
+function handleJoystickMove(clientX, clientY) {
+    const dx = clientX - joystickCenter.x;
+    const dy = clientY - joystickCenter.y;
+    const dist = Math.hypot(dx, dy);
+    const clampedDist = Math.min(dist, maxJoystickRadius);
+    const angle = Math.atan2(dy, dx);
+
+    const thumbX = Math.cos(angle) * clampedDist;
+    const thumbY = Math.sin(angle) * clampedDist;
+
+    if (joystickThumb) {
+        joystickThumb.style.transform = `translate(calc(-50% + ${thumbX}px), calc(-50% + ${thumbY}px))`;
+    }
+
+    const normX = thumbX / maxJoystickRadius;
+    const normY = thumbY / maxJoystickRadius;
+
+    keys.w = normY < -0.25;
+    keys.s = normY > 0.25;
+    keys.a = normX < -0.25;
+    keys.d = normX > 0.25;
+    keys.shift = dist > maxJoystickRadius * 0.85; // Auto sprint at outer edge
+}
+
+// Right Screen Touch-Look for Aiming
+let lookTouchId = null;
+let lastLookTouch = { x: 0, y: 0 };
+
+window.addEventListener('touchstart', (e) => {
+    if (!gameState.inGame || gameState.isShopOpen) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.clientX > window.innerWidth * 0.4 && lookTouchId === null) {
+            // Check if touch is not on a mobile action button
+            const target = document.elementFromPoint(touch.clientX, touch.clientY);
+            if (!target || !target.closest('.touch-btn')) {
+                lookTouchId = touch.identifier;
+                lastLookTouch = { x: touch.clientX, y: touch.clientY };
+            }
+        }
+    }
+}, { passive: true });
+
+window.addEventListener('touchmove', (e) => {
+    if (!gameState.inGame || lookTouchId === null) return;
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        if (touch.identifier === lookTouchId) {
+            const dx = touch.clientX - lastLookTouch.x;
+            const dy = touch.clientY - lastLookTouch.y;
+            lastLookTouch = { x: touch.clientX, y: touch.clientY };
+
+            const sens = weaponSystem.isADS ? 0.003 : 0.005;
+            cameraYaw -= dx * sens;
+            cameraPitch -= dy * sens;
+            cameraPitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, cameraPitch));
+            break;
+        }
+    }
+}, { passive: true });
+
+window.addEventListener('touchend', (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+        if (e.changedTouches[i].identifier === lookTouchId) {
+            lookTouchId = null;
+            break;
+        }
+    }
+});
+
+// Mobile Action Buttons Listeners
+let touchFireInterval = null;
+const btnTouchFire = document.getElementById('btn-touch-fire');
+if (btnTouchFire) {
+    btnTouchFire.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        weaponSystem.fire(camera, scene.children);
+        touchFireInterval = setInterval(() => {
+            weaponSystem.fire(camera, scene.children);
+        }, 120);
+    }, { passive: false });
+
+    const stopTouchFire = () => {
+        if (touchFireInterval) {
+            clearInterval(touchFireInterval);
+            touchFireInterval = null;
+        }
+    };
+    btnTouchFire.addEventListener('touchend', stopTouchFire);
+    btnTouchFire.addEventListener('touchcancel', stopTouchFire);
+}
+
+const btnTouchAds = document.getElementById('btn-touch-ads');
+if (btnTouchAds) {
+    btnTouchAds.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        weaponSystem.toggleADS(!weaponSystem.isADS);
+    }, { passive: false });
+}
+
+const btnTouchJump = document.getElementById('btn-touch-jump');
+if (btnTouchJump) {
+    btnTouchJump.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys.space = true;
+    }, { passive: false });
+}
+
+const btnTouchReload = document.getElementById('btn-touch-reload');
+if (btnTouchReload) {
+    btnTouchReload.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        reloadSystem.startReload(weaponSystem.current);
+    }, { passive: false });
+}
+
+const btnTouchGrenade = document.getElementById('btn-touch-grenade');
+if (btnTouchGrenade) {
+    btnTouchGrenade.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        throwGrenade();
+    }, { passive: false });
+}
+
+const btnTouchShop = document.getElementById('btn-touch-shop');
+if (btnTouchShop) {
+    btnTouchShop.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        toggleShop();
+    }, { passive: false });
+}
+
+// =========================================================
 // 10. UI & LOBBY SYSTEM
 // =========================================================
 function updateHUD() {

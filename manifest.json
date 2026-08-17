@@ -1,0 +1,22 @@
+{
+  "name": "ARENA COMBAT - Cyberpunk TPS",
+  "short_name": "ArenaCombat",
+  "description": "Next-Gen 3D Cyberpunk Tactical Third-Person Shooter Web App",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#050811",
+  "theme_color": "#06b6d4",
+  "icons": [
+    {
+      "src": "cyberpunk-asus-rog-1920x1080-19780.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg"
+    },
+    {
+      "src": "cyberpunk-asus-rog-1920x1080-19780.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg"
+    }
+  ]
+}
