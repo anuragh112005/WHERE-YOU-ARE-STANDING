@@ -1,4 +1,8 @@
-/* Custom CSS styles, mostly handled by Tailwind, but custom animations or resets can go here */
+@import url('https://fonts.googleapis.com/css2?family=Teko:wght@500;600;700&family=Rajdhani:wght@500;600;700&family=Inter:wght@400;600;800;900&display=swap');
+
+* {
+    box-sizing: border-box;
+}
 
 body {
     margin: 0;
@@ -6,6 +10,13 @@ body {
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
+    font-family: 'Rajdhani', 'Inter', sans-serif;
+    background-color: #0b0e14;
+}
+
+.font-heading {
+    font-family: 'Teko', sans-serif;
+    letter-spacing: 0.05em;
 }
 
 canvas {
@@ -13,17 +24,75 @@ canvas {
     outline: none;
 }
 
-/* Scrollbar styling for shop/menus if needed */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
+    height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: rgba(17, 24, 39, 0.8); 
+    background: rgba(10, 15, 25, 0.9); 
 }
 ::-webkit-scrollbar-thumb {
-    background: rgba(75, 85, 99, 0.8); 
-    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.4); 
+    border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: rgba(107, 114, 128, 0.8); 
+    background: rgba(16, 185, 129, 0.8); 
+}
+
+/* Fortnite Yellow PLAY Button Glow */
+.btn-fortnite-play {
+    background: linear-gradient(180deg, #facc15 0%, #eab308 50%, #ca8a04 100%);
+    box-shadow: 0 0 35px rgba(250, 204, 21, 0.5), inset 0 2px 0 rgba(255, 255, 255, 0.6), inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    transform-origin: center;
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-fortnite-play:hover {
+    transform: scale(1.03) translateY(-2px);
+    box-shadow: 0 0 50px rgba(250, 204, 21, 0.8), inset 0 2px 0 rgba(255, 255, 255, 0.8);
+    background: linear-gradient(180deg, #fde047 0%, #facc15 50%, #d97706 100%);
+}
+
+.btn-fortnite-play:active {
+    transform: scale(0.98) translateY(1px);
+}
+
+/* CS:GO Card Styling */
+.cs-card {
+    background: linear-gradient(135deg, rgba(6, 44, 29, 0.85) 0%, rgba(2, 24, 15, 0.95) 100%);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    transition: all 0.12s ease-out;
+}
+
+.cs-card:hover {
+    background: linear-gradient(135deg, rgba(16, 85, 55, 0.95) 0%, rgba(6, 44, 29, 1) 100%);
+    border-color: rgba(52, 211, 153, 0.9);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.3), inset 0 0 10px rgba(52, 211, 153, 0.2);
+    transform: translateY(-1px);
+}
+
+.cs-card.selected {
+    border-color: #34d399;
+    box-shadow: 0 0 25px rgba(52, 211, 153, 0.6), inset 0 0 15px rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, rgba(20, 95, 65, 0.98) 0%, rgba(10, 50, 35, 1) 100%);
+}
+
+.cs-card.locked {
+    opacity: 0.45;
+    filter: grayscale(0.6);
+}
+
+/* CS:GO scanlines */
+.cs-scanlines {
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+    background-size: 100% 4px;
+}
+
+/* Tab Active Indicator */
+.lobby-tab.active {
+    border-bottom: 3px solid #38bdf8;
+    color: #ffffff;
+    text-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
 }
