@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>ARENA COMBAT - Cyberpunk Tactical TPS</title>
+    <!-- Favicon & Apple Touch Icons -->
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
     <!-- PWA Web App Meta Tags -->
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#050811">
@@ -13,10 +16,22 @@
     <meta name="apple-mobile-web-app-title" content="ArenaCombat">
     <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css?v=6.0">
+    <link rel="stylesheet" href="style.css?v=7.0">
 </head>
 <body class="bg-[#050811] overflow-hidden text-white font-sans">
     
+    <!-- Portrait Mode Orientation Warning Overlay (Forces Landscape) -->
+    <div id="portrait-warning" class="fixed inset-0 z-50 bg-[#050811] flex flex-col items-center justify-center p-8 text-center gap-6 select-none">
+        <div class="w-20 h-20 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center p-2 shadow-[0_0_30px_rgba(6,182,212,0.3)]">
+            <img src="logo.png" alt="Arena Combat Logo" class="w-full h-full object-contain">
+        </div>
+        <div class="text-6xl phone-rotate-anim">📱</div>
+        <div class="flex flex-col gap-2">
+            <h2 class="font-heading text-3xl font-black text-white tracking-wider">ROTATE YOUR DEVICE</h2>
+            <p class="text-sm text-cyan-400 font-bold max-w-xs">Please rotate your phone to <span class="text-amber-400 underline">LANDSCAPE MODE</span> for the optimal tactical combat experience.</p>
+        </div>
+    </div>
+
     <!-- 3D Canvas -->
     <canvas id="game-canvas" class="absolute top-0 left-0 w-full h-full z-0 cursor-grab active:cursor-grabbing"></canvas>
 
@@ -31,9 +46,10 @@
         <!-- Top Bar Header -->
         <header class="w-full flex items-start justify-between">
             
-            <!-- Top Left: Golden START Button & Mode Selector -->
+            <!-- Top Left: Logo + Golden START Button & Mode Selector -->
             <div class="flex flex-col gap-2">
                 <div class="flex items-center gap-3">
+                    <img src="logo.png" alt="Arena Combat Logo" class="w-14 h-14 rounded-xl border border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.4)] object-cover">
                     <button id="btn-pubg-start" class="btn-pubg-start px-8 py-3 rounded-2xl font-heading text-4xl font-black text-black tracking-wider uppercase cursor-pointer flex items-center gap-2">
                         <span>START</span>
                         <span class="text-xl">▶</span>
@@ -574,7 +590,7 @@
         }
     </script>
 
-    <script type="module" src="main.js?v=6.0"></script>
+    <script type="module" src="main.js?v=7.0"></script>
     
     <!-- PWA Service Worker Registration -->
     <script>

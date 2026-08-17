@@ -1458,7 +1458,21 @@ document.getElementById('mode-opt-host').addEventListener('click', () => {
     modalModeSelect.classList.add('hidden');
 });
 
+function requestLandscapeAndFullscreen() {
+    try {
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        } else if (document.documentElement.webkitRequestFullscreen) {
+            document.documentElement.webkitRequestFullscreen().catch(() => {});
+        }
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+        }
+    } catch (e) {}
+}
+
 document.getElementById('btn-pubg-start').addEventListener('click', () => {
+    requestLandscapeAndFullscreen();
     playSound('reload_slide');
     document.getElementById('btn-pubg-start').innerHTML = '<span>DEPLOYING...</span>';
     enterGame();

@@ -24,6 +24,27 @@ canvas {
     outline: none;
 }
 
+/* Portrait Orientation Rotate Device Warning */
+#portrait-warning {
+    display: none;
+}
+
+@media screen and (orientation: portrait) and (max-width: 900px) {
+    #portrait-warning {
+        display: flex !important;
+    }
+}
+
+@keyframes rotatePhone {
+    0%, 10% { transform: rotate(0deg); }
+    40%, 60% { transform: rotate(-90deg); }
+    90%, 100% { transform: rotate(0deg); }
+}
+
+.phone-rotate-anim {
+    animation: rotatePhone 2.5s infinite ease-in-out;
+}
+
 /* Mobile Touch Controls Overlay */
 .touch-btn {
     user-select: none;
