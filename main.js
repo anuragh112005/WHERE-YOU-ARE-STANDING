@@ -13,7 +13,6 @@ const gameState = {
 
 // Player Stats
 let health = 100;
-let weaponDamage = 25;
 
 // Networking
 let peer, conn;
