@@ -375,18 +375,19 @@ async function loadWeapons() {
     try {
         const gltf = await gltfLoader.loadAsync('./Low_poly_weapons___Test_map-1f5dd738/glb/converted/low_poly_guns_fbx.glb');
         
-        // Just grab the first valid mesh/group to use as our gun for now
-        gltf.scene.traverse((child) => {
-            if (!weaponMesh && child.isMesh) {
-                weaponMesh = child.parent || child; // Try to grab the whole object, not just a sub-mesh
-            }
-        });
+        weaponMesh = gltf.scene;
         
-        if (!weaponMesh) weaponMesh = gltf.scene;
-        
-        // Setup weapon scale and position relative to player
-        weaponMesh.scale.set(0.5, 0.5, 0.5); // scale down
-        weaponMesh.position.set(0.5, 1.2, 0.5); // approximate right hand position
+        // Auto-scale the weapon so it's approx 1 meter long
+        const gunBox = new THREE.Box3().setFromObject(weaponMesh);
+        const gunSize = gunBox.getSize(new THREE.Vector3());
+        const maxDim = Math.max(gunSize.x, gunSize.y, gunSize.z);
+        if (maxDim > 0) {
+            const scaleObj = 1.0 / maxDim; // force max dimension to 1 unit
+            weaponMesh.scale.set(scaleObj, scaleObj, scaleObj);
+        }
+
+        // Adjust position so it looks like it's held by the right hand
+        weaponMesh.position.set(0.6, 0.8, 0.5); 
         weaponMesh.rotation.y = Math.PI; // point forward
         
         weaponMesh.traverse((child) => {
@@ -423,16 +424,26 @@ async function loadEnvironment() {
             }
         });
 
-        // Scale and position
-        mapGroup.scale.set(1, 1, 1);
+        // Calculate bounding box to center the arena and put its floor at y=0
+        const box = new THREE.Box3().setFromObject(mapGroup);
+        const center = box.getCenter(new THREE.Vector3());
+        
+        mapGroup.position.x = -center.x;
+        mapGroup.position.z = -center.z;
+        // Shift it down so the lowest point is at y=0
+        mapGroup.position.y = -box.min.y;
+        
         scene.add(mapGroup);
 
-        // Simple physics floor for now
+        // Simple physics floor at y=0
         const groundShape = new CANNON.Plane();
         const groundBody = new CANNON.Body({ mass: 0 }); // static
         groundBody.addShape(groundShape);
         groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
         world.addBody(groundBody);
+
+        // Spawn player high up in the middle so they fall to the floor safely
+        playerBody.position.set(0, 10, 0);
 
         loadingStatus.innerText = "Arena Loaded!";
         setTimeout(() => loadingStatus.classList.add('hidden'), 1000);
@@ -495,6 +506,20 @@ function updatePlayer(delta) {
     if (playerMesh) {
         playerMesh.position.copy(playerBody.position);
         playerMesh.position.y -= 0.8; // Offset because cylinder origin is at center
+        
+        // Procedural Animation (Bobbing) when moving
+        const currentSpeedVal = Math.sqrt(playerBody.velocity.x**2 + playerBody.velocity.z**2);
+        if (currentSpeedVal > 0.5) {
+            const time = clock.getElapsedTime();
+            const bobRate = isCrouching ? 10 : (keys.shift ? 20 : 15);
+            const bobAmount = 0.05;
+            playerMesh.position.y += Math.sin(time * bobRate) * bobAmount;
+            
+            // Waddle side to side
+            playerMesh.rotation.z = Math.sin(time * bobRate * 0.5) * 0.05;
+        } else {
+            playerMesh.rotation.z = 0;
+        }
     }
 
     // Update Third-Person Camera
