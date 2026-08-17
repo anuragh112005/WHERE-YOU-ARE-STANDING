@@ -145,32 +145,47 @@ function playSound(type) {
 }
 
 // =========================================================
-// 2. THREE.JS SCENE & CANNON PHYSICS
+// 2. OPTIMIZED HIGH-PERFORMANCE THREE.JS & PHYSICS SETUP
 // =========================================================
 const canvas = document.getElementById('game-canvas');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+const renderer = new THREE.WebGLRenderer({
+    canvas,
+    antialias: true,
+    powerPreference: 'high-performance',
+    precision: 'mediump'
+});
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050811);
 scene.fog = new THREE.FogExp2(0x050811, 0.015);
 
-const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 800);
 camera.position.set(0, 1.35, 3.2);
 
-const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -9.81, 0) });
+const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -18.0, 0) });
 const timeStep = 1 / 60;
 
-// Lights
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.9);
+// Optimized Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
 
-const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-dirLight.position.set(20, 50, 30);
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.6);
+dirLight.position.set(25, 45, 25);
 dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 1024;
+dirLight.shadow.mapSize.height = 1024;
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 100;
+dirLight.shadow.camera.left = -25;
+dirLight.shadow.camera.right = 25;
+dirLight.shadow.camera.top = 25;
+dirLight.shadow.camera.bottom = -25;
 scene.add(dirLight);
 
 const cyanRimLight = new THREE.PointLight(0x06b6d4, 3, 20);
@@ -207,13 +222,50 @@ const SHOP_ITEMS = [
 
 let selectedShopItem = SHOP_ITEMS.find(i => i.id === 'ak47');
 
+// Preloaded Weapon Models Cache for Instant Swapping
+const weaponMeshCache = {};
+async function preloadWeapons() {
+    for (const item of SHOP_ITEMS) {
+        if (item.file && !weaponMeshCache[item.id]) {
+            try {
+                const gltf = await gltfLoader.loadAsync(item.file);
+                const rawMesh = gltf.scene;
+                rawMesh.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(rawMesh);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                rawMesh.position.sub(center);
+                const container = new THREE.Group();
+                container.add(rawMesh);
+
+                const maxDim = Math.max(size.x, size.y, size.z);
+                if (maxDim > 0) {
+                    const targetScale = 85.0 / maxDim; // Optimized for SWAT bone space
+                    container.scale.set(targetScale, targetScale, targetScale);
+                }
+
+                container.traverse(c => {
+                    if (c.isMesh) {
+                        c.castShadow = true;
+                        c.receiveShadow = true;
+                    }
+                });
+
+                weaponMeshCache[item.id] = container;
+            } catch (e) {}
+        }
+    }
+}
+preloadWeapons();
+
 // =========================================================
 // 4. VFX MANAGER
 // =========================================================
 class VFXManager {
     constructor() {
         this.decals = [];
-        this.maxDecals = 50;
+        this.maxDecals = 40;
         this.particles = [];
         this.shotCount = 0;
     }
@@ -245,8 +297,7 @@ class VFXManager {
     createExplosion(position) {
         playSound('explosion');
 
-        // Big fiery sphere
-        const expGeo = new THREE.SphereGeometry(2.5, 16, 16);
+        const expGeo = new THREE.SphereGeometry(2.5, 12, 12);
         const expMat = new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.9 });
         const expMesh = new THREE.Mesh(expGeo, expMat);
         expMesh.position.copy(position);
@@ -254,9 +305,9 @@ class VFXManager {
 
         let scale = 1;
         const interval = setInterval(() => {
-            scale += 0.25;
+            scale += 0.3;
             expMesh.scale.set(scale, scale, scale);
-            expMat.opacity -= 0.15;
+            expMat.opacity -= 0.18;
             if (expMat.opacity <= 0) {
                 clearInterval(interval);
                 scene.remove(expMesh);
@@ -264,8 +315,7 @@ class VFXManager {
             }
         }, 30);
 
-        // Explosion debris & sparks
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 20; i++) {
             const pGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
             const pMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xffaa00 : 0xef4444 });
             const pMesh = new THREE.Mesh(pGeo, pMat);
@@ -277,12 +327,12 @@ class VFXManager {
                 Math.random() * 6 + 2,
                 (Math.random() - 0.5) * 8
             );
-            this.particles.push({ mesh: pMesh, vel: vel, life: 1.0, gravity: true });
+            this.particles.push({ mesh: pMesh, vel: vel, life: 0.8, gravity: true });
         }
     }
 
     createImpact(point, normal, surfaceType = 'concrete') {
-        const count = surfaceType === 'metal' ? 14 : 8;
+        const count = surfaceType === 'metal' ? 10 : 6;
         let color = surfaceType === 'metal' ? 0xfbbf24 : (surfaceType === 'flesh' ? 0xef4444 : 0x94a3b8);
 
         for (let i = 0; i < count; i++) {
@@ -298,7 +348,7 @@ class VFXManager {
                 normal.y * 2 + (Math.random() - 0.5) * spread + (surfaceType === 'metal' ? 1 : 0),
                 normal.z * 2 + (Math.random() - 0.5) * spread
             );
-            this.particles.push({ mesh: pMesh, vel: vel, life: 0.45, gravity: true });
+            this.particles.push({ mesh: pMesh, vel: vel, life: 0.4, gravity: true });
         }
 
         if (surfaceType === 'metal') playSound('hit_metal');
@@ -306,7 +356,7 @@ class VFXManager {
     }
 
     createBulletHole(point, normal) {
-        const decalGeo = new THREE.CircleGeometry(0.05, 8);
+        const decalGeo = new THREE.CircleGeometry(0.05, 6);
         const decalMat = new THREE.MeshBasicMaterial({ color: 0x111827, side: THREE.DoubleSide, depthWrite: false, transparent: true, opacity: 0.9 });
         const decal = new THREE.Mesh(decalGeo, decalMat);
         decal.position.copy(point).addScaledVector(normal, 0.005);
@@ -334,7 +384,7 @@ class VFXManager {
         });
         const line = new THREE.Line(geometry, material);
         scene.add(line);
-        setTimeout(() => { scene.remove(line); geometry.dispose(); material.dispose(); }, 120);
+        setTimeout(() => { scene.remove(line); geometry.dispose(); material.dispose(); }, 100);
     }
 
     update(delta) {
@@ -354,62 +404,86 @@ class VFXManager {
 const vfxManager = new VFXManager();
 
 // =========================================================
-// 5. GRENADE THROW SYSTEM
+// 5. GRENADE THROW & BACK HOLSTER SYSTEM (PUBG STYLE)
 // =========================================================
 const activeGrenades = [];
 let grenadeTemplate = null;
+let isThrowingGrenade = false;
 
-// Preload 3D grenade model
 gltfLoader.load('./retro_lowpoly_psx_grenade.glb', (gltf) => {
     grenadeTemplate = gltf.scene;
     grenadeTemplate.scale.set(0.4, 0.4, 0.4);
 });
 
 function throwGrenade() {
-    if (gameState.grenadesCount <= 0 || !gameState.inGame) return;
+    if (gameState.grenadesCount <= 0 || !gameState.inGame || isThrowingGrenade) return;
+    isThrowingGrenade = true;
     gameState.grenadesCount--;
     playSound('grenade_pin');
 
+    // 1. Move Gun to Back Holster (PUBG Style)
+    weaponSystem.holsterToBack();
+
+    // 2. Play toss grenade animation
     if (animActions.toss) {
         playAnimation('toss', 0.1, false);
     }
 
-    // Spawn grenade model
-    let grenadeMesh = grenadeTemplate ? grenadeTemplate.clone() : new THREE.Mesh(
+    // 3. Attach 3D Grenade in right hand during throw windup
+    let handGrenade = grenadeTemplate ? grenadeTemplate.clone() : new THREE.Mesh(
         new THREE.SphereGeometry(0.12, 8, 8),
         new THREE.MeshStandardMaterial({ color: 0x166534 })
     );
+    handGrenade.scale.set(40, 40, 40); // Local bone scale
+    handGrenade.position.set(0, 5, 5);
+    if (playerRightHandBone) playerRightHandBone.add(handGrenade);
 
-    const spawnPos = new THREE.Vector3();
-    camera.getWorldPosition(spawnPos);
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    spawnPos.addScaledVector(forward, 0.5);
+    // 4. Release grenade after 0.5s along trajectory
+    setTimeout(() => {
+        if (playerRightHandBone && handGrenade.parent === playerRightHandBone) {
+            playerRightHandBone.remove(handGrenade);
+        }
 
-    grenadeMesh.position.copy(spawnPos);
-    scene.add(grenadeMesh);
+        const spawnPos = new THREE.Vector3();
+        camera.getWorldPosition(spawnPos);
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        spawnPos.addScaledVector(forward, 0.6);
 
-    // Cannon physics body
-    const grenadeShape = new CANNON.Sphere(0.15);
-    const grenadeBody = new CANNON.Body({
-        mass: 1.5,
-        linearDamping: 0.2,
-        angularDamping: 0.4
-    });
-    grenadeBody.addShape(grenadeShape);
-    grenadeBody.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
-    grenadeBody.velocity.set(
-        forward.x * 16,
-        forward.y * 16 + 4.5,
-        forward.z * 16
-    );
-    world.addBody(grenadeBody);
+        const projectileMesh = grenadeTemplate ? grenadeTemplate.clone() : new THREE.Mesh(
+            new THREE.SphereGeometry(0.12, 8, 8),
+            new THREE.MeshStandardMaterial({ color: 0x166534 })
+        );
+        projectileMesh.position.copy(spawnPos);
+        projectileMesh.scale.set(0.4, 0.4, 0.4);
+        scene.add(projectileMesh);
 
-    activeGrenades.push({
-        mesh: grenadeMesh,
-        body: grenadeBody,
-        fuse: 2.8
-    });
+        const grenadeBody = new CANNON.Body({
+            mass: 1.5,
+            linearDamping: 0.2,
+            angularDamping: 0.4,
+            shape: new CANNON.Sphere(0.15)
+        });
+        grenadeBody.position.set(spawnPos.x, spawnPos.y, spawnPos.z);
+        grenadeBody.velocity.set(
+            forward.x * 18,
+            forward.y * 18 + 5.0,
+            forward.z * 18
+        );
+        world.addBody(grenadeBody);
+
+        activeGrenades.push({
+            mesh: projectileMesh,
+            body: grenadeBody,
+            fuse: 2.8
+        });
+    }, 550);
+
+    // 5. Draw gun back to hands after throw completes (1.2s)
+    setTimeout(() => {
+        weaponSystem.drawToHands();
+        isThrowingGrenade = false;
+    }, 1200);
 }
 
 function updateGrenades(delta) {
@@ -424,11 +498,10 @@ function updateGrenades(delta) {
             const expPos = g.mesh.position.clone();
             vfxManager.createExplosion(expPos);
 
-            // Area damage
             if (playerBody) {
                 const dist = playerBody.position.distanceTo(new CANNON.Vec3(expPos.x, expPos.y, expPos.z));
-                if (dist < 6.0) {
-                    const dmg = Math.round((1 - dist / 6.0) * 85);
+                if (dist < 6.5) {
+                    const dmg = Math.round((1 - dist / 6.5) * 90);
                     health -= dmg;
                     flashDamageIndicator();
                     updateHUD();
@@ -443,7 +516,7 @@ function updateGrenades(delta) {
 }
 
 // =========================================================
-// 6. RELOAD & WEAPON SYSTEM
+// 6. RELOAD & WEAPON SYSTEM (HOLDING GUN & BACK HOLSTER)
 // =========================================================
 class ReloadSystem {
     constructor() {
@@ -453,7 +526,7 @@ class ReloadSystem {
     }
 
     startReload(weapon) {
-        if (this.isReloading || weapon.ammo >= weapon.magSize || weapon.reserve <= 0) return;
+        if (this.isReloading || weapon.ammo >= weapon.magSize || weapon.reserve <= 0 || isThrowingGrenade) return;
         this.isReloading = true;
         this.reloadProgress = 0;
         gameState.state = 'RELOADING';
@@ -507,10 +580,10 @@ class WeaponSystem {
         };
         this.mesh = null;
         this.cooldown = 0;
-        this.recoilOffset = 0;
         this.isADS = false;
         this.targetFOV = 70;
         this.currentFOV = 70;
+        this.isHolstered = false;
     }
 
     async equip(item) {
@@ -522,49 +595,88 @@ class WeaponSystem {
             reserve: item.reserve || 90
         };
 
-        if (this.mesh && playerRightHandBone) {
-            playerRightHandBone.remove(this.mesh);
+        // Remove old mesh from hand/spine
+        if (this.mesh) {
+            if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
             this.mesh = null;
         }
 
-        try {
-            const gltf = await gltfLoader.loadAsync(item.file);
-            const rawMesh = gltf.scene;
+        // Get cached or create weapon group
+        let container = weaponMeshCache[item.id];
+        if (!container) {
+            try {
+                const gltf = await gltfLoader.loadAsync(item.file);
+                const rawMesh = gltf.scene;
+                rawMesh.updateMatrixWorld(true);
+                const box = new THREE.Box3().setFromObject(rawMesh);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
 
-            const container = new THREE.Group();
-            rawMesh.updateMatrixWorld(true);
-            const box = new THREE.Box3().setFromObject(rawMesh);
-            const center = box.getCenter(new THREE.Vector3());
-            const size = box.getSize(new THREE.Vector3());
+                rawMesh.position.sub(center);
+                container = new THREE.Group();
+                container.add(rawMesh);
 
-            rawMesh.position.sub(center);
-            container.add(rawMesh);
-
-            const maxDim = Math.max(size.x, size.y, size.z);
-            if (maxDim > 0) {
-                const s = 0.75 / maxDim;
-                container.scale.set(s, s, s);
-            }
-
-            // Gun alignment in SWAT right hand
-            container.position.set(0.08, -0.05, 0.12);
-            container.rotation.set(Math.PI / 2, -Math.PI / 2, 0);
-
-            container.traverse(c => {
-                if (c.isMesh) {
-                    c.castShadow = true;
-                    c.receiveShadow = true;
+                const maxDim = Math.max(size.x, size.y, size.z);
+                if (maxDim > 0) {
+                    const targetScale = 85.0 / maxDim;
+                    container.scale.set(targetScale, targetScale, targetScale);
                 }
-            });
 
-            this.mesh = container;
-            if (playerRightHandBone) {
-                playerRightHandBone.add(this.mesh);
+                container.traverse(c => {
+                    if (c.isMesh) {
+                        c.castShadow = true;
+                        c.receiveShadow = true;
+                    }
+                });
+
+                weaponMeshCache[item.id] = container;
+            } catch (e) {
+                console.error('Failed to equip weapon:', e);
+                return;
             }
+        }
 
-            updateHUD();
-        } catch (e) {
-            console.error('Failed to equip weapon:', e);
+        this.mesh = container.clone();
+
+        if (this.isHolstered) {
+            this.holsterToBack();
+        } else {
+            this.drawToHands();
+        }
+
+        updateHUD();
+        console.log('Equipped and attached weapon:', item.name);
+    }
+
+    drawToHands() {
+        this.isHolstered = false;
+        if (!this.mesh) return;
+
+        if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
+
+        // Position in SWAT right hand bone
+        this.mesh.position.set(0, 6.5, 11.5);
+        this.mesh.rotation.set(Math.PI / 2, -Math.PI / 2, 0);
+
+        if (playerRightHandBone) {
+            playerRightHandBone.add(this.mesh);
+        }
+    }
+
+    holsterToBack() {
+        this.isHolstered = true;
+        if (!this.mesh) return;
+
+        if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
+
+        // Slung diagonally across the back (PUBG style)
+        this.mesh.position.set(-10, 18, -14);
+        this.mesh.rotation.set(0.3, 0.2, 2.4);
+
+        if (playerSpineBone) {
+            playerSpineBone.add(this.mesh);
+        } else if (playerMesh) {
+            playerMesh.add(this.mesh);
         }
     }
 
@@ -577,7 +689,7 @@ class WeaponSystem {
     }
 
     fire(camera, sceneChildren) {
-        if (this.cooldown > 0 || reloadSystem.isReloading) return;
+        if (this.cooldown > 0 || reloadSystem.isReloading || this.isHolstered) return;
 
         if (this.current.ammo <= 0) {
             playSound('empty_click');
@@ -587,7 +699,6 @@ class WeaponSystem {
 
         this.current.ammo--;
         this.cooldown = this.current.rate || 0.15;
-        this.recoilOffset = 0.1;
 
         playSound(this.current.sound || 'shoot_rifle');
         updateHUD();
@@ -671,11 +782,11 @@ class WeaponSystem {
 const weaponSystem = new WeaponSystem();
 
 // =========================================================
-// 7. BASIC SHOOTER PACK SWAT CHARACTER & ANIMATION MIXER
+// 7. RIGGED BASIC SHOOTER SWAT CHARACTER & SOLID GROUNDING
 // =========================================================
 let playerBody, playerMesh;
-let playerFeetOffsetY = 0;
 let playerRightHandBone = null;
+let playerSpineBone = null;
 
 let mixer = null;
 const animActions = {};
@@ -691,9 +802,10 @@ let previousMouseX = 0;
 
 const walkSpeed = 5.5;
 const sprintSpeed = 9.5;
-const jumpVelocity = 6.5;
+const jumpVelocity = 7.0;
 
 async function loadCharacter() {
+    // Physical Capsule (Total height 1.8m, center at 0.9m)
     const radius = 0.45;
     const sphereShape = new CANNON.Sphere(radius);
     playerBody = new CANNON.Body({
@@ -701,17 +813,15 @@ async function loadCharacter() {
         fixedRotation: true,
         linearDamping: 0.8
     });
-    playerBody.addShape(sphereShape, new CANNON.Vec3(0, -0.35, 0));
-    playerBody.addShape(sphereShape, new CANNON.Vec3(0, 0.35, 0));
-    playerBody.position.set(0, 0.8, 0);
+    playerBody.addShape(sphereShape, new CANNON.Vec3(0, -0.45, 0));
+    playerBody.addShape(sphereShape, new CANNON.Vec3(0, 0.45, 0));
+    playerBody.position.set(6, 1.2, 6);
     world.addBody(playerBody);
 
     try {
-        // Load SWAT Character FBX
         const swatFbx = await fbxLoader.loadAsync('./Basic Shooter Pack/Swat.fbx');
         playerMesh = swatFbx;
 
-        // Auto scale
         const box = new THREE.Box3().setFromObject(swatFbx);
         const size = box.getSize(new THREE.Vector3());
         if (size.y > 0) {
@@ -719,17 +829,19 @@ async function loadCharacter() {
             swatFbx.scale.set(s, s, s);
         }
 
-        swatFbx.updateMatrixWorld(true);
-        const scaledBox = new THREE.Box3().setFromObject(swatFbx);
-        playerFeetOffsetY = scaledBox.min.y;
-
-        // Find RightHand bone for gun parenting & apply tactical SWAT materials
+        // Find Bone Sockets for Gun in Hand and Back Holster
         playerRightHandBone = null;
+        playerSpineBone = null;
+
         swatFbx.traverse(child => {
             if (child.isBone) {
                 const name = child.name.toLowerCase();
-                if (name.includes('righthand') || name.includes('hand_r') || name.includes('hand.r') || (name.includes('hand') && name.includes('r'))) {
+                if (name.includes('righthand') || name.includes('hand_r') || name.includes('hand.r')) {
                     playerRightHandBone = child;
+                } else if (name.includes('spine2') || name.includes('spine1') || name.includes('spine')) {
+                    if (!playerSpineBone || name.includes('spine2')) {
+                        playerSpineBone = child;
+                    }
                 }
             }
             if (child.isMesh) {
@@ -737,20 +849,20 @@ async function loadCharacter() {
                 child.receiveShadow = true;
 
                 const name = (child.name || '').toLowerCase();
-                let color = 0x242d3d; // Tactical SWAT Navy / Charcoal Suit
+                let color = 0x242d3d; // Tactical SWAT Navy Charcoal Uniform
                 let roughness = 0.5;
                 let metalness = 0.2;
 
                 if (name.includes('head') || name.includes('skin') || name.includes('face')) {
-                    color = 0xd4a373; // Skin tone
+                    color = 0xd4a373;
                     roughness = 0.8;
                     metalness = 0.0;
                 } else if (name.includes('vest') || name.includes('gear') || name.includes('armor') || name.includes('holster')) {
-                    color = 0x0f172a; // Dark Heavy Body Armor
+                    color = 0x0f172a;
                     roughness = 0.35;
                     metalness = 0.5;
                 } else if (name.includes('glass') || name.includes('goggle') || name.includes('visor') || name.includes('eye')) {
-                    color = 0x06b6d4; // Cyan Tactical Visor
+                    color = 0x06b6d4;
                     roughness = 0.1;
                     metalness = 0.9;
                 }
@@ -767,7 +879,7 @@ async function loadCharacter() {
         // Initialize AnimationMixer
         mixer = new THREE.AnimationMixer(swatFbx);
 
-        // Load idle first and start playing immediately
+        // Load Idle First & Render Instantly
         try {
             const idleFbx = await fbxLoader.loadAsync('./Basic Shooter Pack/rifle aiming idle.fbx');
             if (idleFbx.animations && idleFbx.animations.length > 0) {
@@ -776,16 +888,14 @@ async function loadCharacter() {
                 action.play();
                 currentActionName = 'idle';
             }
-        } catch (e) {
-            console.warn('Idle anim load error:', e);
-        }
+        } catch (e) {}
 
         scene.add(playerMesh);
 
-        // Equip default weapon in SWAT's hand
+        // Equip default weapon in SWAT's hand immediately
         await weaponSystem.equip(SHOP_ITEMS.find(i => i.id === 'ak47'));
 
-        // Load remaining animations in parallel without blocking rendering
+        // Load remaining animations in background
         const otherAnims = {
             walk: './Basic Shooter Pack/walking.fbx',
             run: './Basic Shooter Pack/rifle run.fbx',
@@ -878,8 +988,10 @@ function buildLobbyPlatform() {
 buildLobbyPlatform();
 
 // =========================================================
-// 8. ARENA MAP ENVIRONMENT & COLLISION
+// 8. ARENA MAP ENVIRONMENT & 100% SOLID RIGID FLOOR
 // =========================================================
+let arenaColliders = [];
+
 async function loadArenaEnvironment() {
     const mapFile = './FPS_Shooter_Game_Arena_Map_v3-c7e9c3f1/glb/converted/fps_shooter_game_arena_map_v3.glb';
 
@@ -891,6 +1003,7 @@ async function loadArenaEnvironment() {
             if (child.isMesh) {
                 child.castShadow = true;
                 child.receiveShadow = true;
+                arenaColliders.push(child);
             }
         });
 
@@ -903,6 +1016,7 @@ async function loadArenaEnvironment() {
         scene.add(mapGroup);
         mapGroup.updateMatrixWorld(true);
 
+        // Rigid Ground Contact Plane at Y=0
         const groundShape = new CANNON.Plane();
         const groundBody = new CANNON.Body({ mass: 0 });
         groundBody.addShape(groundShape);
@@ -910,6 +1024,7 @@ async function loadArenaEnvironment() {
         groundBody.position.set(0, 0, 0);
         world.addBody(groundBody);
 
+        // Generate Rigid Trimesh Colliders for All Arena Structures
         mapGroup.traverse(child => {
             if (!child.isMesh || !child.geometry) return;
             try {
@@ -939,12 +1054,26 @@ async function loadArenaEnvironment() {
         });
 
         if (playerBody) {
-            playerBody.position.set(6, 0.9, 6);
+            playerBody.position.set(6, 1.2, 6);
             playerBody.velocity.set(0, 0, 0);
         }
     } catch (e) {
         console.error('Failed to load arena:', e);
     }
+}
+
+// Downward Raycast for 100% Solid Floor Alignment
+const groundRaycaster = new THREE.Raycaster();
+const downVector = new THREE.Vector3(0, -1, 0);
+
+function getExactFloorHeight(x, z, currentY) {
+    if (arenaColliders.length === 0) return 0;
+    groundRaycaster.set(new THREE.Vector3(x, currentY + 1.5, z), downVector);
+    const hits = groundRaycaster.intersectObjects(arenaColliders, false);
+    if (hits.length > 0) {
+        return hits[0].point.y;
+    }
+    return 0;
 }
 
 // =========================================================
@@ -1095,6 +1224,27 @@ document.getElementById('btn-open-inventory-locker').addEventListener('click', (
 document.getElementById('btn-nav-inventory').addEventListener('click', () => document.getElementById('modal-inventory').classList.remove('hidden'));
 document.getElementById('btn-close-inventory').addEventListener('click', () => document.getElementById('modal-inventory').classList.add('hidden'));
 
+// Gun Skin Selection in Inventory Wardrobe
+document.querySelectorAll('#grid-inv-guns .inv-card').forEach(card => {
+    card.addEventListener('click', () => {
+        document.querySelectorAll('#grid-inv-guns .inv-card').forEach(c => {
+            c.classList.remove('equipped');
+            c.querySelector('span').className = 'text-xs font-bold text-cyan-400 font-mono';
+            c.querySelector('span').innerText = 'CLICK TO EQUIP';
+        });
+        card.classList.add('equipped');
+        card.querySelector('span').className = 'text-xs font-bold text-amber-400 font-mono';
+        card.querySelector('span').innerText = 'EQUIPPED ✓';
+
+        const gunId = card.getAttribute('data-gun');
+        const item = SHOP_ITEMS.find(i => i.id === gunId);
+        if (item) {
+            weaponSystem.equip(item);
+            playSound('reload_slide');
+        }
+    });
+});
+
 // Mode Selector
 const modalModeSelect = document.getElementById('modal-mode-select');
 document.getElementById('btn-open-mode-modal').addEventListener('click', () => modalModeSelect.classList.remove('hidden'));
@@ -1121,7 +1271,7 @@ document.getElementById('btn-pubg-start').addEventListener('click', () => {
     enterGame();
 });
 
-// In-Game Buy Menu
+// In-Game Buy Menu (Swaps gun instantly when bought)
 function renderBuyMenu() {
     const cols = {
         'equipment': document.getElementById('col-equipment'),
@@ -1158,9 +1308,17 @@ function renderBuyMenu() {
         `;
 
         card.addEventListener('click', () => {
-            if (item.type === 'gun') weaponSystem.equip(item);
-            else if (item.type === 'grenade') gameState.grenadesCount += 2;
+            if (item.type === 'gun') {
+                weaponSystem.equip(item);
+            } else if (item.type === 'grenade') {
+                gameState.grenadesCount += 2;
+            } else if (item.type === 'armor') {
+                armor = Math.min(maxArmor, armor + item.value);
+            } else if (item.type === 'health') {
+                health = maxHealth;
+            }
             playSound('buy');
+            updateHUD();
             renderBuyMenu();
         });
 
@@ -1219,7 +1377,6 @@ function animate() {
     const delta = clock.getDelta();
     const time = clock.getElapsedTime();
 
-    // Mixer Animation Tick (Mixamo Mocap tracks)
     if (mixer) mixer.update(delta);
 
     vfxManager.update(delta);
@@ -1241,8 +1398,8 @@ function animate() {
 function updatePlayerPhysics(delta, time) {
     if (!playerBody || !gameState.inGame) return;
 
-    if (playerBody.position.y < -2.0) {
-        playerBody.position.set(6, 0.9, 6);
+    if (playerBody.position.y < -4.0) {
+        playerBody.position.set(6, 1.2, 6);
         playerBody.velocity.set(0, 0, 0);
     }
 
@@ -1269,8 +1426,7 @@ function updatePlayerPhysics(delta, time) {
             playerMesh.rotation.y = Math.atan2(playerBody.velocity.x, playerBody.velocity.z);
         }
 
-        // Trigger Run vs Walk animation
-        if (!reloadSystem.isReloading) {
+        if (!reloadSystem.isReloading && !isThrowingGrenade) {
             if (isSprinting) playAnimation('run', 0.2);
             else playAnimation('walk', 0.2);
         }
@@ -1278,30 +1434,39 @@ function updatePlayerPhysics(delta, time) {
         playerBody.velocity.x *= 0.5;
         playerBody.velocity.z *= 0.5;
 
-        // Trigger Idle animation
-        if (!reloadSystem.isReloading && currentActionName !== 'toss' && currentActionName !== 'fire') {
+        if (!reloadSystem.isReloading && !isThrowingGrenade && currentActionName !== 'fire') {
             playAnimation('idle', 0.2);
         }
     }
 
+    // Precise Floor Detection to Guarantee Rigid Surface
+    const floorY = getExactFloorHeight(playerBody.position.x, playerBody.position.z, playerBody.position.y);
+    const targetBodyY = floorY + 0.90;
+
+    if (playerBody.position.y < targetBodyY) {
+        playerBody.position.y = targetBodyY;
+        if (playerBody.velocity.y < 0) playerBody.velocity.y = 0;
+    }
+
     // Jump
-    const isGrounded = Math.abs(playerBody.velocity.y) < 0.15;
-    if (keys.space && isGrounded) {
+    const isGrounded = Math.abs(playerBody.position.y - targetBodyY) < 0.12 || Math.abs(playerBody.velocity.y) < 0.15;
+    if (keys.space && isGrounded && !isThrowingGrenade) {
         playerBody.velocity.y = jumpVelocity;
         playSound('jump_sfx');
         if (animActions.jump) playAnimation('jump', 0.1, false);
         keys.space = false;
     }
 
-    // Sync mesh to physics body
+    // Perfectly grounded mesh position: feet rest exactly on top of the floor
     if (playerMesh) {
-        const groundContactY = playerBody.position.y - 0.7;
-        playerMesh.position.x = playerBody.position.x;
-        playerMesh.position.z = playerBody.position.z;
-        playerMesh.position.y = groundContactY - playerFeetOffsetY;
+        playerMesh.position.set(
+            playerBody.position.x,
+            playerBody.position.y - 0.90,
+            playerBody.position.z
+        );
     }
 
-    // Camera Rig
+    // Third-person Orbit Camera
     const orbitDist = weaponSystem.isADS ? 2.2 : 3.8;
     const yOffset = weaponSystem.isADS ? 1.35 : 1.45;
 
