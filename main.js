@@ -236,6 +236,14 @@ async function preloadWeapons() {
                 const size = box.getSize(new THREE.Vector3());
 
                 rawMesh.position.sub(center);
+
+                // Ensure barrel points forward along standard rifle axis
+                if (size.x > size.y && size.x > size.z) {
+                    rawMesh.rotation.y = -Math.PI / 2;
+                } else if (size.y > size.x && size.y > size.z) {
+                    rawMesh.rotation.x = Math.PI / 2;
+                }
+
                 const container = new THREE.Group();
                 container.add(rawMesh);
 
@@ -654,9 +662,9 @@ class WeaponSystem {
 
         if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
 
-        // Position in SWAT right hand bone
-        this.mesh.position.set(0, 6.5, 11.5);
-        this.mesh.rotation.set(Math.PI / 2, -Math.PI / 2, 0);
+        // Correct forward-pointing alignment in SWAT right hand grip
+        this.mesh.position.set(-2.0, 9.5, 4.0);
+        this.mesh.rotation.set(-Math.PI / 2, Math.PI / 2, 0);
 
         if (playerRightHandBone) {
             playerRightHandBone.add(this.mesh);
