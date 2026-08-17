@@ -723,7 +723,7 @@ async function loadCharacter() {
         const scaledBox = new THREE.Box3().setFromObject(swatFbx);
         playerFeetOffsetY = scaledBox.min.y;
 
-        // Find RightHand bone for gun parenting
+        // Find RightHand bone for gun parenting & apply tactical SWAT materials
         playerRightHandBone = null;
         swatFbx.traverse(child => {
             if (child.isBone) {
@@ -735,6 +735,32 @@ async function loadCharacter() {
             if (child.isMesh) {
                 child.castShadow = true;
                 child.receiveShadow = true;
+
+                const name = (child.name || '').toLowerCase();
+                let color = 0x242d3d; // Tactical SWAT Navy / Charcoal Suit
+                let roughness = 0.5;
+                let metalness = 0.2;
+
+                if (name.includes('head') || name.includes('skin') || name.includes('face')) {
+                    color = 0xd4a373; // Skin tone
+                    roughness = 0.8;
+                    metalness = 0.0;
+                } else if (name.includes('vest') || name.includes('gear') || name.includes('armor') || name.includes('holster')) {
+                    color = 0x0f172a; // Dark Heavy Body Armor
+                    roughness = 0.35;
+                    metalness = 0.5;
+                } else if (name.includes('glass') || name.includes('goggle') || name.includes('visor') || name.includes('eye')) {
+                    color = 0x06b6d4; // Cyan Tactical Visor
+                    roughness = 0.1;
+                    metalness = 0.9;
+                }
+
+                child.material = new THREE.MeshStandardMaterial({
+                    color: color,
+                    roughness: roughness,
+                    metalness: metalness,
+                    side: THREE.DoubleSide
+                });
             }
         });
 
