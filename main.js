@@ -380,16 +380,19 @@ function handleNetworkShoot(data) {
 
 // Phase 2: Setup Player Physics and Model
 async function loadPlayer() {
-    const radius = 0.5;
-    const height = 1.6;
-    const playerShape = new CANNON.Cylinder(radius, radius, height, 16);
+    // Smooth capsule body (2 spheres) so the player glides smoothly and never snags
+    const radius = 0.45;
+    const sphereShape = new CANNON.Sphere(radius);
     playerBody = new CANNON.Body({
         mass: 75,
         fixedRotation: true,
-        position: new CANNON.Vec3(0, 5, 0)
+        linearDamping: 0.8
     });
-    playerBody.addShape(playerShape);
-    playerBody.linearDamping = 0.9;
+    playerBody.addShape(sphereShape, new CANNON.Vec3(0, -0.35, 0)); // feet
+    playerBody.addShape(sphereShape, new CANNON.Vec3(0, 0.35, 0));  // torso
+    
+    // Spawn on open floor at (6, 0.9, 6)
+    playerBody.position.set(6, 0.9, 6);
     world.addBody(playerBody);
 
     try {
@@ -520,55 +523,59 @@ async function loadEnvironment() {
 
         scene.add(mapGroup);
 
-        // 2. Force update world matrices so bounding boxes are correct in world space
+        // 2. Force update world matrices so bounding boxes and vertices are in world space
         mapGroup.updateMatrixWorld(true);
 
-        // 3. Build a CANNON.Box physics body for EVERY mesh in the arena
-        //    This gives us solid walls, platforms, floors — everything!
-        let floorY = 0; // track the highest floor surface to spawn player above it
+        // 3. Add base static ground plane at y = 0
+        const groundShape = new CANNON.Plane();
+        const groundBody = new CANNON.Body({ mass: 0 });
+        groundBody.addShape(groundShape);
+        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+        groundBody.position.set(0, 0, 0);
+        world.addBody(groundBody);
+
+        // 4. Build exact Trimesh collision bodies for all walls and arena obstacles
         let meshCount = 0;
-
         mapGroup.traverse((child) => {
-            if (!child.isMesh) return;
+            if (!child.isMesh || !child.geometry) return;
 
-            // Compute world-space bounding box for this mesh
-            const meshBox = new THREE.Box3().setFromObject(child);
-            const meshSize = meshBox.getSize(new THREE.Vector3());
-            const meshCenter = meshBox.getCenter(new THREE.Vector3());
+            try {
+                const geo = child.geometry.clone();
+                child.updateWorldMatrix(true, false);
+                geo.applyMatrix4(child.matrixWorld);
 
-            // Skip degenerate meshes (tiny slivers, invisible faces, etc.)
-            if (meshSize.x < 0.01 || meshSize.y < 0.01 || meshSize.z < 0.01) return;
-            // Skip any single mesh that is larger than 500 units (probably the sky/background)
-            if (meshSize.x > 500 || meshSize.z > 500) return;
+                const posAttr = geo.attributes.position;
+                if (!posAttr || posAttr.count < 3) return;
 
-            // Create a static Box body that matches the mesh bounding box
-            const halfExtents = new CANNON.Vec3(
-                meshSize.x / 2,
-                meshSize.y / 2,
-                meshSize.z / 2
-            );
-            const boxShape = new CANNON.Box(halfExtents);
-            const boxBody = new CANNON.Body({ mass: 0 }); // mass=0 → static/immovable
-            boxBody.addShape(boxShape);
-            boxBody.position.set(meshCenter.x, meshCenter.y, meshCenter.z);
-            world.addBody(boxBody);
-            meshCount++;
+                const vertices = [];
+                for (let i = 0; i < posAttr.count; i++) {
+                    vertices.push(posAttr.getX(i), posAttr.getY(i), posAttr.getZ(i));
+                }
 
-            // Track topmost surface of any relatively flat/floor-like mesh
-            // (top of box = meshCenter.y + meshSize.y/2)
-            const topSurface = meshCenter.y + meshSize.y / 2;
-            if (topSurface > floorY && topSurface < 5) {
-                floorY = topSurface;
+                let indices = [];
+                if (geo.index) {
+                    indices = Array.from(geo.index.array);
+                } else {
+                    for (let i = 0; i < posAttr.count; i++) {
+                        indices.push(i);
+                    }
+                }
+
+                const trimesh = new CANNON.Trimesh(vertices, indices);
+                const body = new CANNON.Body({ mass: 0 });
+                body.addShape(trimesh);
+                world.addBody(body);
+                meshCount++;
+            } catch (e) {
+                console.warn("Could not create trimesh for", child.name, e);
             }
         });
 
-        console.log(`Built ${meshCount} collision bodies for arena. Floor at Y=${floorY.toFixed(2)}`);
+        console.log(`Built ${meshCount} exact Trimesh physics bodies for arena.`);
 
-        // 4. Spawn player above the detected floor level
-        //    Physics cylinder height = 1.6, so center needs to be at floorY + 0.8 + small gap
-        const spawnY = floorY + 0.8 + 2;
+        // 5. Place player directly on the open floor at (6, 0.9, 6)
         if (playerBody) {
-            playerBody.position.set(0, spawnY, 0);
+            playerBody.position.set(6, 0.9, 6);
             playerBody.velocity.set(0, 0, 0);
             playerBody.angularVelocity.set(0, 0, 0);
         }
