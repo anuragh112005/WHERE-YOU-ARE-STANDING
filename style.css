@@ -92,33 +92,60 @@ canvas {
     height: 48px;
     background: rgba(15, 23, 42, 0.75);
     border: 1.5px solid rgba(148, 163, 184, 0.4);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.4);
-}
-
-/* Virtual Joystick */
+/* Virtual Joystick Base & Thumb */
 #touch-joystick-base {
-    width: 130px;
-    height: 130px;
+    width: 120px;
+    height: 120px;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(15, 23, 42, 0.5) 0%, rgba(6, 182, 212, 0.15) 100%);
-    border: 2px solid rgba(6, 182, 212, 0.4);
-    box-shadow: 0 0 25px rgba(6, 182, 212, 0.25);
+    background: radial-gradient(circle, rgba(15, 23, 42, 0.6) 0%, rgba(6, 182, 212, 0.2) 100%);
+    border: 2px solid rgba(6, 182, 212, 0.5);
+    box-shadow: 0 0 25px rgba(6, 182, 212, 0.3);
     position: relative;
     touch-action: none;
 }
 
 #touch-joystick-thumb {
-    width: 54px;
-    height: 54px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     background: radial-gradient(circle, #38bdf8 0%, #0284c7 100%);
     border: 2px solid #ffffff;
-    box-shadow: 0 0 15px rgba(56, 189, 248, 0.8);
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.9);
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
+}
+
+/* Mobile Touch Controls Overlay: Hidden on Desktop, Visible on Touch screens */
+#mobile-controls-overlay {
+    display: none;
+}
+
+@media (pointer: coarse), (max-width: 1024px) {
+    #mobile-controls-overlay {
+        display: block !important;
+    }
+}
+
+/* Mobile HUD adjustments so controls never overlap */
+@media (pointer: coarse), (max-width: 1024px) {
+    #hud-health-container {
+        bottom: auto !important;
+        top: 80px !important;
+        left: 20px !important;
+        width: 200px !important;
+        padding: 8px 12px !important;
+    }
+
+    #hud-ammo-container {
+        bottom: auto !important;
+        top: 80px !important;
+        right: 20px !important;
+        width: 180px !important;
+        padding: 8px 12px !important;
+    }
 }
 
 /* Golden PUBG-style START Button */

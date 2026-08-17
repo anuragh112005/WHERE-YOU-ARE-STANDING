@@ -145,7 +145,7 @@ function playSound(type) {
 }
 
 // =========================================================
-// 2. OPTIMIZED HIGH-PERFORMANCE THREE.JS & PHYSICS SETUP
+// 2. HIGH-PERFORMANCE WEBGL ENGINE SETUP
 // =========================================================
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({
@@ -171,7 +171,7 @@ camera.position.set(0, 1.35, 3.2);
 const world = new CANNON.World({ gravity: new CANNON.Vec3(0, -18.0, 0) });
 const timeStep = 1 / 60;
 
-// Optimized Lighting
+// Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 scene.add(ambientLight);
 
@@ -180,12 +180,6 @@ dirLight.position.set(25, 45, 25);
 dirLight.castShadow = true;
 dirLight.shadow.mapSize.width = 1024;
 dirLight.shadow.mapSize.height = 1024;
-dirLight.shadow.camera.near = 1;
-dirLight.shadow.camera.far = 100;
-dirLight.shadow.camera.left = -25;
-dirLight.shadow.camera.right = 25;
-dirLight.shadow.camera.top = 25;
-dirLight.shadow.camera.bottom = -25;
 scene.add(dirLight);
 
 const cyanRimLight = new THREE.PointLight(0x06b6d4, 3, 20);
@@ -207,7 +201,7 @@ window.addEventListener('resize', () => {
 });
 
 // =========================================================
-// 3. WEAPONS CATALOG
+// 3. WEAPONS CATALOG & PRELOAD CACHE
 // =========================================================
 const SHOP_ITEMS = [
     { id: 'kevlar', category: 'equipment', name: 'Kevlar Vest', cost: 650, icon: '🛡️', type: 'armor', value: 50, dmgVal: 0, rateVal: 0, rangeVal: 0, desc: 'Lightweight body armor.', tip: 'Essential budget protection.' },
@@ -222,58 +216,56 @@ const SHOP_ITEMS = [
 
 let selectedShopItem = SHOP_ITEMS.find(i => i.id === 'ak47');
 
-// Preloaded Weapon Models Cache for Instant Swapping
+// Preloaded Weapon Models Cache
 const weaponMeshCache = {};
-async function preloadWeapons() {
-    for (const item of SHOP_ITEMS) {
-        if (item.file && !weaponMeshCache[item.id]) {
-            try {
-                const gltf = await gltfLoader.loadAsync(item.file);
-                const rawMesh = gltf.scene;
-                rawMesh.updateMatrixWorld(true);
-                const box = new THREE.Box3().setFromObject(rawMesh);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
+async function preloadWeaponModel(item) {
+    if (!item.file || weaponMeshCache[item.id]) return weaponMeshCache[item.id];
+    try {
+        const gltf = await gltfLoader.loadAsync(item.file);
+        const rawMesh = gltf.scene;
+        rawMesh.updateMatrixWorld(true);
+        const box = new THREE.Box3().setFromObject(rawMesh);
+        const center = box.getCenter(new THREE.Vector3());
+        const size = box.getSize(new THREE.Vector3());
 
-                rawMesh.position.sub(center);
+        rawMesh.position.sub(center);
 
-                // Ensure barrel points forward along standard rifle axis
-                if (size.x > size.y && size.x > size.z) {
-                    rawMesh.rotation.y = -Math.PI / 2;
-                } else if (size.y > size.x && size.y > size.z) {
-                    rawMesh.rotation.x = Math.PI / 2;
-                }
-
-                const container = new THREE.Group();
-                container.add(rawMesh);
-
-                const maxDim = Math.max(size.x, size.y, size.z);
-                if (maxDim > 0) {
-                    const targetScale = 85.0 / maxDim; // Optimized for SWAT bone space
-                    container.scale.set(targetScale, targetScale, targetScale);
-                }
-
-                container.traverse(c => {
-                    if (c.isMesh) {
-                        c.castShadow = true;
-                        c.receiveShadow = true;
-                    }
-                });
-
-                weaponMeshCache[item.id] = container;
-            } catch (e) {}
+        if (size.x > size.y && size.x > size.z) {
+            rawMesh.rotation.y = -Math.PI / 2;
+        } else if (size.y > size.x && size.y > size.z) {
+            rawMesh.rotation.x = Math.PI / 2;
         }
+
+        const container = new THREE.Group();
+        container.add(rawMesh);
+
+        const maxDim = Math.max(size.x, size.y, size.z);
+        if (maxDim > 0) {
+            const targetScale = 85.0 / maxDim;
+            container.scale.set(targetScale, targetScale, targetScale);
+        }
+
+        container.traverse(c => {
+            if (c.isMesh) {
+                c.castShadow = true;
+                c.receiveShadow = true;
+            }
+        });
+
+        weaponMeshCache[item.id] = container;
+        return container;
+    } catch (e) {
+        return null;
     }
 }
-preloadWeapons();
 
 // =========================================================
-// 4. VFX MANAGER
+// 4. VFX & IMPACT PARTICLES
 // =========================================================
 class VFXManager {
     constructor() {
         this.decals = [];
-        this.maxDecals = 40;
+        this.maxDecals = 35;
         this.particles = [];
         this.shotCount = 0;
     }
@@ -323,7 +315,7 @@ class VFXManager {
             }
         }, 30);
 
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 18; i++) {
             const pGeo = new THREE.BoxGeometry(0.08, 0.08, 0.08);
             const pMat = new THREE.MeshBasicMaterial({ color: Math.random() > 0.5 ? 0xffaa00 : 0xef4444 });
             const pMesh = new THREE.Mesh(pGeo, pMat);
@@ -340,7 +332,7 @@ class VFXManager {
     }
 
     createImpact(point, normal, surfaceType = 'concrete') {
-        const count = surfaceType === 'metal' ? 10 : 6;
+        const count = surfaceType === 'metal' ? 8 : 5;
         let color = surfaceType === 'metal' ? 0xfbbf24 : (surfaceType === 'flesh' ? 0xef4444 : 0x94a3b8);
 
         for (let i = 0; i < count; i++) {
@@ -392,7 +384,7 @@ class VFXManager {
         });
         const line = new THREE.Line(geometry, material);
         scene.add(line);
-        setTimeout(() => { scene.remove(line); geometry.dispose(); material.dispose(); }, 100);
+        setTimeout(() => { scene.remove(line); geometry.dispose(); material.dispose(); }, 90);
     }
 
     update(delta) {
@@ -412,7 +404,7 @@ class VFXManager {
 const vfxManager = new VFXManager();
 
 // =========================================================
-// 5. GRENADE THROW & BACK HOLSTER SYSTEM (PUBG STYLE)
+// 5. GRENADE THROW & PUBG BACK-HOLSTER SYSTEM
 // =========================================================
 const activeGrenades = [];
 let grenadeTemplate = null;
@@ -429,24 +421,24 @@ function throwGrenade() {
     gameState.grenadesCount--;
     playSound('grenade_pin');
 
-    // 1. Move Gun to Back Holster (PUBG Style)
+    // 1. Move rifle to back holster
     weaponSystem.holsterToBack();
 
-    // 2. Play toss grenade animation
+    // 2. Play toss animation
     if (animActions.toss) {
         playAnimation('toss', 0.1, false);
     }
 
-    // 3. Attach 3D Grenade in right hand during throw windup
+    // 3. Attach grenade in right hand during throw windup
     let handGrenade = grenadeTemplate ? grenadeTemplate.clone() : new THREE.Mesh(
         new THREE.SphereGeometry(0.12, 8, 8),
         new THREE.MeshStandardMaterial({ color: 0x166534 })
     );
-    handGrenade.scale.set(40, 40, 40); // Local bone scale
+    handGrenade.scale.set(40, 40, 40);
     handGrenade.position.set(0, 5, 5);
     if (playerRightHandBone) playerRightHandBone.add(handGrenade);
 
-    // 4. Release grenade after 0.5s along trajectory
+    // 4. Release projectile along camera forward arc
     setTimeout(() => {
         if (playerRightHandBone && handGrenade.parent === playerRightHandBone) {
             playerRightHandBone.remove(handGrenade);
@@ -487,7 +479,7 @@ function throwGrenade() {
         });
     }, 550);
 
-    // 5. Draw gun back to hands after throw completes (1.2s)
+    // 5. Draw gun back to hands after throw completes
     setTimeout(() => {
         weaponSystem.drawToHands();
         isThrowingGrenade = false;
@@ -524,7 +516,7 @@ function updateGrenades(delta) {
 }
 
 // =========================================================
-// 6. RELOAD & WEAPON SYSTEM (HOLDING GUN & BACK HOLSTER)
+// 6. RELOAD & WEAPON CONTROLLER
 // =========================================================
 class ReloadSystem {
     constructor() {
@@ -603,46 +595,13 @@ class WeaponSystem {
             reserve: item.reserve || 90
         };
 
-        // Remove old mesh from hand/spine
-        if (this.mesh) {
-            if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
+        if (this.mesh && this.mesh.parent) {
+            this.mesh.parent.remove(this.mesh);
             this.mesh = null;
         }
 
-        // Get cached or create weapon group
-        let container = weaponMeshCache[item.id];
-        if (!container) {
-            try {
-                const gltf = await gltfLoader.loadAsync(item.file);
-                const rawMesh = gltf.scene;
-                rawMesh.updateMatrixWorld(true);
-                const box = new THREE.Box3().setFromObject(rawMesh);
-                const center = box.getCenter(new THREE.Vector3());
-                const size = box.getSize(new THREE.Vector3());
-
-                rawMesh.position.sub(center);
-                container = new THREE.Group();
-                container.add(rawMesh);
-
-                const maxDim = Math.max(size.x, size.y, size.z);
-                if (maxDim > 0) {
-                    const targetScale = 85.0 / maxDim;
-                    container.scale.set(targetScale, targetScale, targetScale);
-                }
-
-                container.traverse(c => {
-                    if (c.isMesh) {
-                        c.castShadow = true;
-                        c.receiveShadow = true;
-                    }
-                });
-
-                weaponMeshCache[item.id] = container;
-            } catch (e) {
-                console.error('Failed to equip weapon:', e);
-                return;
-            }
-        }
+        const container = await preloadWeaponModel(item);
+        if (!container) return;
 
         this.mesh = container.clone();
 
@@ -653,7 +612,6 @@ class WeaponSystem {
         }
 
         updateHUD();
-        console.log('Equipped and attached weapon:', item.name);
     }
 
     drawToHands() {
@@ -662,8 +620,8 @@ class WeaponSystem {
 
         if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
 
-        // Correct forward-pointing alignment in SWAT right hand grip
-        this.mesh.position.set(-2.0, 9.5, 4.0);
+        // Perfectly aligned inside SWAT right hand fingers aiming forward
+        this.mesh.position.set(-2.0, 9.5, 3.5);
         this.mesh.rotation.set(-Math.PI / 2, Math.PI / 2, 0);
 
         if (playerRightHandBone) {
@@ -790,7 +748,7 @@ class WeaponSystem {
 const weaponSystem = new WeaponSystem();
 
 // =========================================================
-// 7. RIGGED BASIC SHOOTER SWAT CHARACTER & SOLID GROUNDING
+// 7. RIGGED SWAT OPERATIVE & FULL LOCOMOTION PACK (12 MOVES)
 // =========================================================
 let playerBody, playerMesh;
 let playerRightHandBone = null;
@@ -802,18 +760,14 @@ let currentActionName = 'idle';
 
 let cameraYaw = 0;
 let cameraPitch = 0;
-let isCrouching = false;
-let colorIndex = Math.floor(Math.random() * 0xffffff);
-
 let isDraggingLobby = false;
 let previousMouseX = 0;
 
-const walkSpeed = 5.5;
-const sprintSpeed = 9.5;
-const jumpVelocity = 7.0;
+const walkSpeed = 5.0;
+const sprintSpeed = 8.8;
+const jumpVelocity = 7.2;
 
 async function loadCharacter() {
-    // Physical Capsule (Total height 1.8m, center at 0.9m)
     const radius = 0.45;
     const sphereShape = new CANNON.Sphere(radius);
     playerBody = new CANNON.Body({
@@ -837,7 +791,6 @@ async function loadCharacter() {
             swatFbx.scale.set(s, s, s);
         }
 
-        // Find Bone Sockets for Gun in Hand and Back Holster
         playerRightHandBone = null;
         playerSpineBone = null;
 
@@ -857,7 +810,7 @@ async function loadCharacter() {
                 child.receiveShadow = true;
 
                 const name = (child.name || '').toLowerCase();
-                let color = 0x242d3d; // Tactical SWAT Navy Charcoal Uniform
+                let color = 0x242d3d; // Tactical SWAT Charcoal
                 let roughness = 0.5;
                 let metalness = 0.2;
 
@@ -884,7 +837,6 @@ async function loadCharacter() {
             }
         });
 
-        // Initialize AnimationMixer
         mixer = new THREE.AnimationMixer(swatFbx);
 
         // Load Idle First & Render Instantly
@@ -903,18 +855,22 @@ async function loadCharacter() {
         // Equip default weapon in SWAT's hand immediately
         await weaponSystem.equip(SHOP_ITEMS.find(i => i.id === 'ak47'));
 
-        // Load remaining animations in background
-        const otherAnims = {
+        // Load complete movement pack in parallel
+        const fullLocomotionPack = {
             walk: './Basic Shooter Pack/walking.fbx',
+            walk_back: './Basic Shooter Pack/walking backwards.fbx',
+            strafe_left: './Basic Shooter Pack/strafe left.fbx',
+            strafe_right: './Basic Shooter Pack/strafe right.fbx',
             run: './Basic Shooter Pack/rifle run.fbx',
+            run_back: './Basic Shooter Pack/run backwards.fbx',
+            jump: './Basic Shooter Pack/rifle jump.fbx',
             reload: './Basic Shooter Pack/reloading.fbx',
             fire: './Basic Shooter Pack/firing rifle.fbx',
-            jump: './Basic Shooter Pack/rifle jump.fbx',
             toss: './Basic Shooter Pack/toss grenade.fbx',
             hit: './Basic Shooter Pack/hit reaction.fbx'
         };
 
-        Promise.all(Object.entries(otherAnims).map(async ([name, path]) => {
+        Promise.all(Object.entries(fullLocomotionPack).map(async ([name, path]) => {
             try {
                 const animFbx = await fbxLoader.loadAsync(path);
                 if (animFbx.animations && animFbx.animations.length > 0) {
@@ -934,7 +890,7 @@ async function loadCharacter() {
     }
 }
 
-function playAnimation(name, fadeDuration = 0.2, loop = true) {
+function playAnimation(name, fadeDuration = 0.18) {
     if (!mixer || !animActions[name] || currentActionName === name) return;
 
     const nextAction = animActions[name];
@@ -996,7 +952,7 @@ function buildLobbyPlatform() {
 buildLobbyPlatform();
 
 // =========================================================
-// 8. ARENA MAP ENVIRONMENT & 100% SOLID RIGID FLOOR
+// 8. 100% RIGID ARENA COLLISION (RAMPS, BOXES, PLATFORMS)
 // =========================================================
 let arenaColliders = [];
 
@@ -1024,7 +980,6 @@ async function loadArenaEnvironment() {
         scene.add(mapGroup);
         mapGroup.updateMatrixWorld(true);
 
-        // Rigid Ground Contact Plane at Y=0
         const groundShape = new CANNON.Plane();
         const groundBody = new CANNON.Body({ mass: 0 });
         groundBody.addShape(groundShape);
@@ -1032,7 +987,6 @@ async function loadArenaEnvironment() {
         groundBody.position.set(0, 0, 0);
         world.addBody(groundBody);
 
-        // Generate Rigid Trimesh Colliders for All Arena Structures
         mapGroup.traverse(child => {
             if (!child.isMesh || !child.geometry) return;
             try {
@@ -1070,13 +1024,13 @@ async function loadArenaEnvironment() {
     }
 }
 
-// Downward Raycast for 100% Solid Floor Alignment
+// Downward Raycaster for Surface Snapping
 const groundRaycaster = new THREE.Raycaster();
 const downVector = new THREE.Vector3(0, -1, 0);
 
 function getExactFloorHeight(x, z, currentY) {
     if (arenaColliders.length === 0) return 0;
-    groundRaycaster.set(new THREE.Vector3(x, currentY + 1.5, z), downVector);
+    groundRaycaster.set(new THREE.Vector3(x, currentY + 0.5, z), downVector);
     const hits = groundRaycaster.intersectObjects(arenaColliders, false);
     if (hits.length > 0) {
         return hits[0].point.y;
@@ -1085,7 +1039,7 @@ function getExactFloorHeight(x, z, currentY) {
 }
 
 // =========================================================
-// 9. INPUT HANDLING (Movement, G for Grenade)
+// 9. INPUT HANDLING (DESKTOP & MOBILE TOUCH)
 // =========================================================
 const keys = { w: false, a: false, s: false, d: false, shift: false, ctrl: false, space: false };
 
@@ -1096,7 +1050,6 @@ window.addEventListener('keydown', (e) => {
     if (e.ctrlKey) keys.ctrl = true;
     if (e.code === 'Space') keys.space = true;
 
-    // G key tosses grenade
     if (k === 'g' && gameState.inGame) {
         throwGrenade();
     }
@@ -1225,10 +1178,10 @@ function handleJoystickMove(clientX, clientY) {
     keys.s = normY > 0.25;
     keys.a = normX < -0.25;
     keys.d = normX > 0.25;
-    keys.shift = dist > maxJoystickRadius * 0.85; // Auto sprint at outer edge
+    keys.shift = dist > maxJoystickRadius * 0.85;
 }
 
-// Right Screen Touch-Look for Aiming
+// Right Screen Touch Look
 let lookTouchId = null;
 let lastLookTouch = { x: 0, y: 0 };
 
@@ -1237,7 +1190,6 @@ window.addEventListener('touchstart', (e) => {
     for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         if (touch.clientX > window.innerWidth * 0.4 && lookTouchId === null) {
-            // Check if touch is not on a mobile action button
             const target = document.elementFromPoint(touch.clientX, touch.clientY);
             if (!target || !target.closest('.touch-btn')) {
                 lookTouchId = touch.identifier;
@@ -1417,7 +1369,7 @@ document.getElementById('btn-open-inventory-locker').addEventListener('click', (
 document.getElementById('btn-nav-inventory').addEventListener('click', () => document.getElementById('modal-inventory').classList.remove('hidden'));
 document.getElementById('btn-close-inventory').addEventListener('click', () => document.getElementById('modal-inventory').classList.add('hidden'));
 
-// Gun Skin Selection in Inventory Wardrobe
+// Gun Skin Selection in Inventory
 document.querySelectorAll('#grid-inv-guns .inv-card').forEach(card => {
     card.addEventListener('click', () => {
         document.querySelectorAll('#grid-inv-guns .inv-card').forEach(c => {
@@ -1478,7 +1430,7 @@ document.getElementById('btn-pubg-start').addEventListener('click', () => {
     enterGame();
 });
 
-// In-Game Buy Menu (Swaps gun instantly when bought)
+// In-Game Buy Menu
 function renderBuyMenu() {
     const cols = {
         'equipment': document.getElementById('col-equipment'),
@@ -1574,7 +1526,7 @@ async function enterGame() {
 }
 
 // =========================================================
-// 11. ANIMATION & PHYSICS TICK LOOP
+// 11. MAIN ANIMATION & PHYSICS TICK LOOP
 // =========================================================
 const clock = new THREE.Clock();
 
@@ -1611,52 +1563,72 @@ function updatePlayerPhysics(delta, time) {
     }
 
     const isSprinting = keys.shift && !keys.ctrl;
-    isCrouching = keys.ctrl;
+    const isCrouching = keys.ctrl;
     const speed = isSprinting ? sprintSpeed : (isCrouching ? walkSpeed * 0.5 : walkSpeed);
 
-    const direction = new THREE.Vector3();
-    if (keys.w) direction.z -= 1;
-    if (keys.s) direction.z += 1;
-    if (keys.a) direction.x -= 1;
-    if (keys.d) direction.x += 1;
+    // Direction calculation in local movement space
+    let moveForward = 0;
+    let moveStrafe = 0;
 
-    direction.normalize();
-    const isMoving = direction.lengthSq() > 0;
+    if (keys.w) moveForward += 1;
+    if (keys.s) moveForward -= 1;
+    if (keys.d) moveStrafe += 1;
+    if (keys.a) moveStrafe -= 1;
 
+    const isMoving = moveForward !== 0 || moveStrafe !== 0;
+
+    // Apply movement velocity relative to camera look angle
     if (isMoving) {
+        const moveDir = new THREE.Vector3(moveStrafe, 0, -moveForward).normalize();
         const euler = new THREE.Euler(0, cameraYaw, 0, 'YXZ');
-        direction.applyEuler(euler);
-        playerBody.velocity.x = direction.x * speed;
-        playerBody.velocity.z = direction.z * speed;
+        moveDir.applyEuler(euler);
 
+        playerBody.velocity.x = moveDir.x * speed;
+        playerBody.velocity.z = moveDir.z * speed;
+
+        // Player body smoothly tracks camera aim direction (crosshair)
         if (playerMesh) {
-            playerMesh.rotation.y = Math.atan2(playerBody.velocity.x, playerBody.velocity.z);
+            playerMesh.rotation.y = cameraYaw + Math.PI;
         }
 
+        // Directional locomotion animation selection
         if (!reloadSystem.isReloading && !isThrowingGrenade) {
-            if (isSprinting) playAnimation('run', 0.2);
-            else playAnimation('walk', 0.2);
+            if (moveForward > 0) {
+                if (isSprinting) playAnimation('run', 0.18);
+                else playAnimation('walk', 0.18);
+            } else if (moveForward < 0) {
+                if (isSprinting) playAnimation('run_back', 0.18);
+                else playAnimation('walk_back', 0.18);
+            } else if (moveStrafe < 0) {
+                playAnimation('strafe_left', 0.18);
+            } else if (moveStrafe > 0) {
+                playAnimation('strafe_right', 0.18);
+            }
         }
     } else {
         playerBody.velocity.x *= 0.5;
         playerBody.velocity.z *= 0.5;
 
+        if (playerMesh) {
+            playerMesh.rotation.y = cameraYaw + Math.PI;
+        }
+
         if (!reloadSystem.isReloading && !isThrowingGrenade && currentActionName !== 'fire') {
-            playAnimation('idle', 0.2);
+            playAnimation('idle', 0.18);
         }
     }
 
-    // Precise Floor Detection to Guarantee Rigid Surface
+    // 100% Solid Rigid Floor & Platform Alignment
     const floorY = getExactFloorHeight(playerBody.position.x, playerBody.position.z, playerBody.position.y);
     const targetBodyY = floorY + 0.90;
 
-    if (playerBody.position.y < targetBodyY) {
+    if (playerBody.position.y <= targetBodyY + 0.15) {
         playerBody.position.y = targetBodyY;
         if (playerBody.velocity.y < 0) playerBody.velocity.y = 0;
     }
 
     // Jump
-    const isGrounded = Math.abs(playerBody.position.y - targetBodyY) < 0.12 || Math.abs(playerBody.velocity.y) < 0.15;
+    const isGrounded = Math.abs(playerBody.position.y - targetBodyY) < 0.15 || Math.abs(playerBody.velocity.y) < 0.15;
     if (keys.space && isGrounded && !isThrowingGrenade) {
         playerBody.velocity.y = jumpVelocity;
         playSound('jump_sfx');
@@ -1664,7 +1636,7 @@ function updatePlayerPhysics(delta, time) {
         keys.space = false;
     }
 
-    // Perfectly grounded mesh position: feet rest exactly on top of the floor
+    // Grounded mesh placement: boots rest firmly on top of the surface
     if (playerMesh) {
         playerMesh.position.set(
             playerBody.position.x,
