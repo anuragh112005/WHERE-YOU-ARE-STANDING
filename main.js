@@ -493,6 +493,15 @@ function handleNetworkShoot(data) {
     }
 }
 
+let playerFeetOffsetY = 0;
+let paladinLimbs = {
+    rightArm: [],
+    leftArm: [],
+    rightLeg: [],
+    leftLeg: [],
+    torso: []
+};
+
 // ==========================================
 // CHARACTER & WEAPON LOADERS
 // ==========================================
@@ -513,58 +522,83 @@ async function loadPlayer() {
         const fbx = await fbxLoader.loadAsync('./New_Character/fbx/stylized_paladin_fbx_extracted/Stylized_Paladin.fbx');
         playerMesh = fbx;
 
+        // Auto-scale to 1.75m standard character height
         const box = new THREE.Box3().setFromObject(fbx);
         const size = box.getSize(new THREE.Vector3());
         if (size.y > 0) {
-            const s = 1.7 / size.y;
+            const s = 1.75 / size.y;
             fbx.scale.set(s, s, s);
         }
 
-        const armorTex = texLoader.load('./New_Character/fbx/stylized_paladin_fbx_extracted/Textures/Armor_Base_color.png');
-        const bodyTex = texLoader.load('./New_Character/fbx/stylized_paladin_fbx_extracted/Textures/Body_Base_color.png');
-        const hairTex = texLoader.load('./New_Character/fbx/stylized_paladin_fbx_extracted/Textures/Hair_Color.png');
+        // Calculate bottom of feet to prevent floor sinking
+        fbx.updateMatrixWorld(true);
+        const scaledBox = new THREE.Box3().setFromObject(fbx);
+        playerFeetOffsetY = scaledBox.min.y;
 
-        playerBones = {};
-        playerRightHand = null;
+        // Textures
+        const basePath = './New_Character/fbx/stylized_paladin_fbx_extracted/Textures/';
+        const armorTex = texLoader.load(basePath + 'Armor_Base_color.png');
+        const bodyTex = texLoader.load(basePath + 'Body_Base_color.png');
+        const hairTex = texLoader.load(basePath + 'Hair_Color.png');
+        const eyeTex = texLoader.load(basePath + 'Eye_Iris_Color.png');
+
+        [armorTex, bodyTex, hairTex, eyeTex].forEach(t => {
+            t.colorSpace = THREE.SRGBColorSpace;
+        });
+
+        paladinLimbs = { rightArm: [], leftArm: [], rightLeg: [], leftLeg: [], torso: [] };
 
         fbx.traverse((child) => {
-            if (child.isBone) {
-                const name = child.name.toLowerCase();
-                playerBones[name] = child;
-                if (name.includes('righthand') || name.includes('hand_r') || name.includes('hand.r') || (name.includes('hand') && name.includes('r'))) {
-                    playerRightHand = child;
-                }
+            if (!child.isMesh) return;
+            child.castShadow = true;
+            child.receiveShadow = true;
+
+            const name = (child.name || '').toLowerCase();
+            const matName = (child.material?.name || '').toLowerCase();
+
+            // Assign textures based on mesh & material names
+            let tex = bodyTex;
+            let isArmor = false;
+            if (name.includes('armor') || name.includes('boot') || name.includes('neck') || matName.includes('armor')) {
+                tex = armorTex;
+                isArmor = true;
+            } else if (name.includes('hair') || name.includes('eyebrow') || name.includes('eyelash') || matName.includes('hair')) {
+                tex = hairTex;
+            } else if (name.includes('eye') || matName.includes('eye')) {
+                tex = eyeTex;
             }
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-                const mName = (child.name || '').toLowerCase();
-                if (child.material) {
-                    if (mName.includes('armor')) child.material.map = armorTex;
-                    else if (mName.includes('hair')) child.material.map = hairTex;
-                    else if (mName.includes('body') || mName.includes('head') || mName.includes('paladin')) child.material.map = bodyTex;
-                    child.material.needsUpdate = true;
-                }
+
+            child.material = new THREE.MeshStandardMaterial({
+                map: tex,
+                roughness: 0.45,
+                metalness: isArmor ? 0.35 : 0.05,
+                side: THREE.DoubleSide
+            });
+
+            // Categorize into limbs for procedural walk/aim rig
+            const mBox = new THREE.Box3().setFromObject(child);
+            const mCenter = mBox.getCenter(new THREE.Vector3());
+
+            if (name.includes('arm_armor')) {
+                if (mCenter.x > 0) paladinLimbs.rightArm.push(child);
+                else paladinLimbs.leftArm.push(child);
+            } else if (name.includes('boot_armor')) {
+                if (mCenter.x > 0) paladinLimbs.rightLeg.push(child);
+                else paladinLimbs.leftLeg.push(child);
+            } else {
+                paladinLimbs.torso.push(child);
             }
         });
 
-        // Pose character arms in combat stance
-        for (const [name, bone] of Object.entries(playerBones)) {
-            if (name.includes('rightarm') || name.includes('upperarm_r') || name.includes('arm_r') || name.includes('shoulder_r')) {
-                bone.rotation.x = -Math.PI / 4;
-                bone.rotation.z = Math.PI / 8;
-            }
-            if (name.includes('rightforearm') || name.includes('lowerarm_r') || name.includes('forearm_r')) {
-                bone.rotation.y = -Math.PI / 6;
-            }
-            if (name.includes('leftarm') || name.includes('upperarm_l') || name.includes('arm_l') || name.includes('shoulder_l')) {
-                bone.rotation.x = -Math.PI / 3;
-                bone.rotation.y = Math.PI / 4;
-            }
-            if (name.includes('leftforearm') || name.includes('lowerarm_l') || name.includes('forearm_l')) {
-                bone.rotation.y = Math.PI / 3;
-            }
-        }
+        // Pose right arm forward to hold and aim weapon
+        paladinLimbs.rightArm.forEach(mesh => {
+            mesh.rotation.x = -Math.PI / 4;
+            mesh.rotation.z = Math.PI / 10;
+        });
+        paladinLimbs.leftArm.forEach(mesh => {
+            mesh.rotation.x = -Math.PI / 3;
+            mesh.rotation.y = Math.PI / 5;
+        });
 
         scene.add(playerMesh);
 
@@ -1039,39 +1073,38 @@ function updatePlayer(delta, time) {
         keys.space = false;
     }
 
-    // Sync mesh to physics body
+    // Sync mesh to physics body with exact feet grounding
     if (playerMesh) {
-        playerMesh.position.copy(playerBody.position);
-        playerMesh.position.y -= 0.8;
+        // Ground contact is at playerBody.position.y - 0.7 (bottom of physics capsule)
+        const groundContactY = playerBody.position.y - 0.7;
+        playerMesh.position.x = playerBody.position.x;
+        playerMesh.position.z = playerBody.position.z;
+        playerMesh.position.y = groundContactY - playerFeetOffsetY;
 
         const speedVal = Math.sqrt(playerBody.velocity.x ** 2 + playerBody.velocity.z ** 2);
         const isMoving = speedVal > 0.5;
         const bobRate = isCrouching ? 8 : (keys.shift ? 18 : 12);
 
         if (isMoving) {
-            const legSwing = Math.sin(time * bobRate) * 0.6;
-            for (const [name, bone] of Object.entries(playerBones)) {
-                if (name.includes('thigh_l') || name.includes('leftupleg') || name.includes('leg_l')) {
-                    bone.rotation.x = legSwing;
-                }
-                if (name.includes('thigh_r') || name.includes('rightupleg') || name.includes('leg_r')) {
-                    bone.rotation.x = -legSwing;
-                }
-                if (name.includes('calf_l') || name.includes('leftleg') || name.includes('lowerleg_l')) {
-                    bone.rotation.x = Math.max(0, -legSwing * 0.7);
-                }
-                if (name.includes('calf_r') || name.includes('rightleg') || name.includes('lowerleg_r')) {
-                    bone.rotation.x = Math.max(0, legSwing * 0.7);
-                }
-            }
+            const legSwing = Math.sin(time * bobRate) * 0.5;
+            paladinLimbs.rightLeg.forEach(m => m.rotation.x = -legSwing);
+            paladinLimbs.leftLeg.forEach(m => m.rotation.x = legSwing);
+            paladinLimbs.rightArm.forEach(m => m.rotation.x = -Math.PI / 4 + Math.sin(time * bobRate) * 0.1);
+            paladinLimbs.leftArm.forEach(m => m.rotation.x = -Math.PI / 3 - Math.sin(time * bobRate) * 0.1);
+
             playerMesh.position.y += Math.sin(time * bobRate * 2) * 0.03;
             playerMesh.rotation.z = Math.sin(time * bobRate * 0.5) * 0.02;
         } else {
-            for (const [name, bone] of Object.entries(playerBones)) {
-                if (name.includes('leg') || name.includes('thigh') || name.includes('calf')) {
-                    bone.rotation.x = 0;
-                }
-            }
+            paladinLimbs.rightLeg.forEach(m => m.rotation.x = 0);
+            paladinLimbs.leftLeg.forEach(m => m.rotation.x = 0);
+            paladinLimbs.rightArm.forEach(m => {
+                m.rotation.x = -Math.PI / 4;
+                m.rotation.z = Math.PI / 10;
+            });
+            paladinLimbs.leftArm.forEach(m => {
+                m.rotation.x = -Math.PI / 3;
+                m.rotation.y = Math.PI / 5;
+            });
             playerMesh.position.y += Math.sin(time * 1.5) * 0.01;
             playerMesh.rotation.z = 0;
         }
