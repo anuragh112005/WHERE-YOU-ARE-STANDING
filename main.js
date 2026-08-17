@@ -445,15 +445,14 @@ async function loadEnvironment() {
     loadingStatus.classList.remove('hidden');
     loadingStatus.innerText = "Loading Arena...";
 
-    // Randomly pick map v3 or v4
-    const mapFile = Math.random() > 0.5 ? 
-        './FPS_Shooter_Game_Arena_Map_v3-c7e9c3f1/glb/converted/fps_shooter_game_arena_map_v3.glb' : 
+    const mapFile = Math.random() > 0.5 ?
+        './FPS_Shooter_Game_Arena_Map_v3-c7e9c3f1/glb/converted/fps_shooter_game_arena_map_v3.glb' :
         './FPS_Shooter_Game_Arena_Map_v4-df281796/glb/converted/fps_shooter_game_arena_map_v4.glb';
 
     try {
         const gltf = await gltfLoader.loadAsync(mapFile);
         const mapGroup = gltf.scene;
-        
+
         mapGroup.traverse((child) => {
             if (child.isMesh) {
                 child.castShadow = true;
@@ -461,41 +460,76 @@ async function loadEnvironment() {
             }
         });
 
-        // Calculate bounding box to center the arena and put its floor at y=0
-        const box = new THREE.Box3().setFromObject(mapGroup);
-        const center = box.getCenter(new THREE.Vector3());
-        const arenaSize = box.getSize(new THREE.Vector3());
-        
-        mapGroup.position.x = -center.x;
-        mapGroup.position.z = -center.z;
-        // Shift it down so the lowest point is at y=0
-        mapGroup.position.y = -box.min.y;
-        
+        // 1. Center the map horizontally and sit it on Y=0
+        const sceneBox = new THREE.Box3().setFromObject(mapGroup);
+        const sceneCenter = sceneBox.getCenter(new THREE.Vector3());
+
+        mapGroup.position.x = -sceneCenter.x;
+        mapGroup.position.z = -sceneCenter.z;
+        mapGroup.position.y = -sceneBox.min.y; // lift so floor sits at y=0
+
         scene.add(mapGroup);
 
-        // Simple physics floor at y=0
-        const groundShape = new CANNON.Plane();
-        const groundBody = new CANNON.Body({ mass: 0 }); // static
-        groundBody.addShape(groundShape);
-        groundBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
-        world.addBody(groundBody);
+        // 2. Force update world matrices so bounding boxes are correct in world space
+        mapGroup.updateMatrixWorld(true);
 
-        // Spawn player INSIDE the arena at a safe interior point
-        // Use 1/4 of the arena size inward from center to guarantee interior spawn
-        const spawnX = arenaSize.x * 0.1;
-        const spawnZ = arenaSize.z * 0.1;
-        playerBody.position.set(spawnX, 8, spawnZ);
+        // 3. Build a CANNON.Box physics body for EVERY mesh in the arena
+        //    This gives us solid walls, platforms, floors — everything!
+        let floorY = 0; // track the highest floor surface to spawn player above it
+        let meshCount = 0;
+
+        mapGroup.traverse((child) => {
+            if (!child.isMesh) return;
+
+            // Compute world-space bounding box for this mesh
+            const meshBox = new THREE.Box3().setFromObject(child);
+            const meshSize = meshBox.getSize(new THREE.Vector3());
+            const meshCenter = meshBox.getCenter(new THREE.Vector3());
+
+            // Skip degenerate meshes (tiny slivers, invisible faces, etc.)
+            if (meshSize.x < 0.01 || meshSize.y < 0.01 || meshSize.z < 0.01) return;
+            // Skip any single mesh that is larger than 500 units (probably the sky/background)
+            if (meshSize.x > 500 || meshSize.z > 500) return;
+
+            // Create a static Box body that matches the mesh bounding box
+            const halfExtents = new CANNON.Vec3(
+                meshSize.x / 2,
+                meshSize.y / 2,
+                meshSize.z / 2
+            );
+            const boxShape = new CANNON.Box(halfExtents);
+            const boxBody = new CANNON.Body({ mass: 0 }); // mass=0 → static/immovable
+            boxBody.addShape(boxShape);
+            boxBody.position.set(meshCenter.x, meshCenter.y, meshCenter.z);
+            world.addBody(boxBody);
+            meshCount++;
+
+            // Track topmost surface of any relatively flat/floor-like mesh
+            // (top of box = meshCenter.y + meshSize.y/2)
+            const topSurface = meshCenter.y + meshSize.y / 2;
+            if (topSurface > floorY && topSurface < 5) {
+                floorY = topSurface;
+            }
+        });
+
+        console.log(`Built ${meshCount} collision bodies for arena. Floor at Y=${floorY.toFixed(2)}`);
+
+        // 4. Spawn player above the detected floor level
+        //    Physics cylinder height = 1.6, so center needs to be at floorY + 0.8 + small gap
+        const spawnY = floorY + 0.8 + 2; // 2 unit gap above floor so they don't clip in
+        playerBody.position.set(0, spawnY, 0);
         playerBody.velocity.set(0, 0, 0);
-        console.log(`Arena size: ${arenaSize.x.toFixed(1)} x ${arenaSize.z.toFixed(1)}, spawning at (${spawnX.toFixed(1)}, 8, ${spawnZ.toFixed(1)})`);
+        playerBody.angularVelocity.set(0, 0, 0);
 
         loadingStatus.innerText = "Arena Loaded!";
         setTimeout(() => loadingStatus.classList.add('hidden'), 1000);
-        
+
     } catch (err) {
         console.error("Failed to load map:", err);
         loadingStatus.innerText = "Failed to load map.";
     }
 }
+
 
 function updatePlayer(delta) {
     if (!playerBody || !gameState.inGame) return;
