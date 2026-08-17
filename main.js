@@ -561,10 +561,12 @@ async function loadEnvironment() {
 
         // 4. Spawn player above the detected floor level
         //    Physics cylinder height = 1.6, so center needs to be at floorY + 0.8 + small gap
-        const spawnY = floorY + 0.8 + 2; // 2 unit gap above floor so they don't clip in
-        playerBody.position.set(0, spawnY, 0);
-        playerBody.velocity.set(0, 0, 0);
-        playerBody.angularVelocity.set(0, 0, 0);
+        const spawnY = floorY + 0.8 + 2;
+        if (playerBody) {
+            playerBody.position.set(0, spawnY, 0);
+            playerBody.velocity.set(0, 0, 0);
+            playerBody.angularVelocity.set(0, 0, 0);
+        }
 
         loadingStatus.innerText = "Arena Loaded!";
         setTimeout(() => loadingStatus.classList.add('hidden'), 1000);
@@ -743,15 +745,8 @@ btnJoinLobby.addEventListener('click', () => {
 document.getElementById('btn-solo-play').addEventListener('click', () => {
     gameState.isHost = false;
     gameState.roomCode = 'SOLO';
-    gameState.inGame = true;
-    uiMainMenu.classList.add('hidden');
-    uiHud.classList.remove('hidden');
-    hudRoomCode.innerText = 'SOLO';
-    canvas.requestPointerLock();
-    loadEnvironment();
-    loadPlayer();
+    enterGame();
 });
-
 
 // Shop Interactions
 btnCloseShop.addEventListener('click', () => {
@@ -766,14 +761,12 @@ WEAPONS.forEach((def, idx) => {
     if (!btn) return;
     btn.addEventListener('click', () => {
         if (idx === 0) {
-            // Free default — just equip
             loadWeaponByIndex(0);
             return;
         }
         if (gameState.coins >= def.cost) {
             addCoins(-def.cost);
             loadWeaponByIndex(idx);
-            // Update all buttons to show which one is equipped
             WEAPONS.forEach(w => {
                 const b = document.getElementById(`btn-buy-${w.id}`);
                 if (b) b.innerText = (w.id === def.id) ? 'Equipped ✓' : w.label;
@@ -786,31 +779,32 @@ WEAPONS.forEach((def, idx) => {
 });
 
 function startGame() {
-    // Show loading status, hide menu
     loadingStatus.classList.remove('hidden');
     loadingStatus.innerText = '⏳ Initializing...';
-    
-    // Start networking — enterGame() is called by peer.on('open') once connected
     setupNetworking();
 }
 
-// Called once network is ready (or immediately for solo)
-function enterGame() {
+let gameLoaded = false;
+async function enterGame() {
+    if (gameLoaded) return;
+    gameLoaded = true;
+
     uiMainMenu.classList.add('hidden');
     uiHud.classList.remove('hidden');
     hudRoomCode.innerText = gameState.roomCode || 'SOLO';
     gameState.inGame = true;
 
-    // Request pointer lock (must be triggered by user gesture — done via button click chain)
-    canvas.requestPointerLock();
+    try {
+        canvas.requestPointerLock();
+    } catch (e) {}
 
-    loadEnvironment();
-    loadPlayer();
+    await loadPlayer();
+    await loadEnvironment();
 }
 
 // Handle pointer lock exit
 document.addEventListener('pointerlockchange', () => {
     if (document.pointerLockElement !== canvas && gameState.inGame) {
-        // Show pause menu or main menu (simplified for now)
+        // Pointer unlocked
     }
 });
