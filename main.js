@@ -37,13 +37,30 @@ const jumpVelocity = 6;
 let isCrouching = false;
 let colorIndex = Math.floor(Math.random() * 0xffffff);
 
+// Weapon Catalog — all 7 guns
+const WEAPONS = [
+    { id: 'ak47',    name: 'AK-47',          file: './ak-47_mid-poly.glb',           cost: 0,   damage: 30, rate: 0.18, color: 0xd97706, label: 'FREE' },
+    { id: 'm4',      name: 'M4 Carbine',      file: './m4_carbine_rifle.glb',          cost: 150, damage: 25, rate: 0.12, color: 0x6b7280, label: '150 Coins' },
+    { id: 'uzi',     name: 'UZI',             file: './uzi.glb',                       cost: 200, damage: 12, rate: 0.05, color: 0xf59e0b, label: '200 Coins' },
+    { id: 'pp19',    name: 'PP-19 Vityaz',    file: './pp-19-01_vityaz.glb',           cost: 250, damage: 18, rate: 0.08, color: 0x3b82f6, label: '250 Coins' },
+    { id: 'ump',     name: 'HK UMP',          file: './heckler__koch_ump.glb',         cost: 300, damage: 22, rate: 0.10, color: 0x10b981, label: '300 Coins' },
+    { id: 'fpspist', name: 'FPS Pistol',       file: './gun_fps_hand.glb',              cost: 100, damage: 40, rate: 0.50, color: 0x8b5cf6, label: '100 Coins' },
+    { id: 'm590',    name: 'M590 Shotgun',     file: './free_fire_gun_m590.glb',        cost: 400, damage: 90, rate: 1.20, color: 0xef4444, label: '400 Coins' },
+];
+let currentWeaponIdx = 0; // AK-47 default
+
 // Weapon Variables
 let weaponMesh;
 let raycaster = new THREE.Raycaster();
 let shootCooldown = 0;
-let shootRate = 0.15; // seconds between shots
-let recoilOffset = 0; // for weapon kickback
-const bullets = []; // simple tracer lines
+let shootRate = WEAPONS[0].rate;
+let weaponDamage = WEAPONS[0].damage;
+let recoilOffset = 0;
+
+// Procedural Rig Bones — detected child meshes of the character
+let rigLeftArm = null, rigRightArm = null;
+let rigLeftLeg = null, rigRightLeg = null;
+let rigUpperBody = null;
 
 // UI Elements
 const uiMainMenu = document.getElementById('main-menu');
@@ -71,6 +88,8 @@ function updateHUD() {
     } else {
         healthBarFill.className = 'bg-gradient-to-r from-green-500 to-green-400 h-full w-full transition-all duration-300';
     }
+    // Refresh shop coin balance text
+    shopCoins.innerText = gameState.coins;
 }
 function addCoins(amount) {
     gameState.coins += amount;
@@ -333,12 +352,11 @@ async function loadPlayer() {
     const height = 1.6;
     const playerShape = new CANNON.Cylinder(radius, radius, height, 16);
     playerBody = new CANNON.Body({
-        mass: 75, // kg
-        fixedRotation: true, // Don't tumble
+        mass: 75,
+        fixedRotation: true,
         position: new CANNON.Vec3(0, 5, 0)
     });
     playerBody.addShape(playerShape);
-    // Low friction so we don't stick to walls
     playerBody.linearDamping = 0.9;
     world.addBody(playerBody);
 
@@ -346,97 +364,109 @@ async function loadPlayer() {
     try {
         const gltf = await gltfLoader.loadAsync('./Low_Poly_Character-8f36aa0e/glb/converted/source.glb');
         playerMesh = gltf.scene;
-        
-        // Dynamic Character Color
+
+        // If the GLB has built-in animations, play them
+        if (gltf.animations && gltf.animations.length > 0) {
+            const mixer = new THREE.AnimationMixer(playerMesh);
+            gltf.animations.forEach(clip => mixer.clipAction(clip).play());
+            // Store mixer so we can update it in the loop
+            playerMesh.userData.mixer = mixer;
+        }
+
+        // Procedural rig: detect limb meshes by their position relative to center
+        // After adding to scene, find the bounding box center of the whole model
+        const wholebox = new THREE.Box3().setFromObject(playerMesh);
+        const wholeCenter = wholebox.getCenter(new THREE.Vector3());
+        const wholeHeight = wholebox.max.y - wholebox.min.y;
+        const midY = wholebox.min.y + wholeHeight * 0.45; // waist level
+
         playerMesh.traverse((child) => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-                // Tint the material slightly based on a random color
-                if (child.material) {
-                    child.material = child.material.clone();
-                    child.material.color.setHex(colorIndex);
-                }
+            if (!child.isMesh) return;
+            const box = new THREE.Box3().setFromObject(child);
+            const c = box.getCenter(new THREE.Vector3());
+            const sz = box.getSize(new THREE.Vector3());
+
+            // Tint color
+            if (child.material) {
+                child.material = child.material.clone();
+                child.material.color.setHex(colorIndex);
+            }
+            child.castShadow = true;
+            child.receiveShadow = true;
+
+            // Skip very large meshes (body torso)
+            if (sz.x > 0.6 && sz.y > 0.7) {
+                if (!rigUpperBody) rigUpperBody = child;
+                return;
+            }
+
+            // Arms: above waist, to left or right of center
+            if (c.y > midY && Math.abs(c.x - wholeCenter.x) > 0.1) {
+                if (c.x < wholeCenter.x && !rigLeftArm)  rigLeftArm  = child;
+                if (c.x > wholeCenter.x && !rigRightArm) rigRightArm = child;
+            }
+            // Legs: below waist
+            if (c.y < midY && sz.y > 0.2) {
+                if (c.x < wholeCenter.x && !rigLeftLeg)  rigLeftLeg  = child;
+                if (c.x > wholeCenter.x && !rigRightLeg) rigRightLeg = child;
             }
         });
 
-        // Scale and add
+        console.log('Rig found - LA:', !!rigLeftArm, 'RA:', !!rigRightArm, 'LL:', !!rigLeftLeg, 'RL:', !!rigRightLeg);
+
         playerMesh.scale.set(1, 1, 1);
         scene.add(playerMesh);
-        
-        // Load Weapons after player is ready
-        loadWeapons();
+
+        // Load default weapon (AK-47)
+        loadWeaponByIndex(0);
     } catch(err) {
         console.error("Failed to load player mesh", err);
     }
 }
 
-async function loadWeapons() {
+// Load weapon by catalog index
+async function loadWeaponByIndex(idx) {
+    const def = WEAPONS[idx];
+    if (!def) return;
+    currentWeaponIdx = idx;
+    shootRate = def.rate;
+    weaponDamage = def.damage;
+
+    // Remove old weapon from player
+    if (weaponMesh && playerMesh) {
+        playerMesh.remove(weaponMesh);
+        weaponMesh = null;
+    }
+
     try {
-        // Use the Free Pack weapon GLB - it has proper gun meshes (AK47, M16, pistol)
-        const gltf = await gltfLoader.loadAsync('./Free_Pack_-_Weapon-3ee0ae1f/glb/converted/free_pack_weapon.glb');
-        
-        // Log what's in the scene so we know what to pick
-        const meshNames = [];
-        gltf.scene.traverse((child) => {
-            if (child.isMesh) meshNames.push(child.name);
-        });
-        console.log('Weapon meshes found:', meshNames);
-        
-        // The scene may contain multiple weapons + a test map floor.
-        // We want to find the largest single weapon object (not the flat floor plane).
-        let bestGun = null;
-        let bestVolume = 0;
-        
-        gltf.scene.traverse((child) => {
-            if (child.isMesh) {
-                const box = new THREE.Box3().setFromObject(child);
-                const size = box.getSize(new THREE.Vector3());
-                
-                // Skip flat planes (the test map floor - has very small Y dimension)
-                if (size.y < 0.05) return;
-                
-                const volume = size.x * size.y * size.z;
-                if (volume > bestVolume) {
-                    bestVolume = volume;
-                    bestGun = child;
-                }
-            }
-        });
-        
-        if (!bestGun) {
-            console.warn('Could not find a suitable gun mesh, using entire scene');
-            bestGun = gltf.scene;
-        }
-        
-        console.log('Selected gun mesh:', bestGun.name);
-        
-        // Clone it so we detach it cleanly from original parent
-        weaponMesh = bestGun.clone();
-        
-        // Auto-scale: we want the gun to be about 1.2 units long
+        const gltf = await gltfLoader.loadAsync(def.file);
+        weaponMesh = gltf.scene;
+
+        // Auto-scale to ~1 unit length
         const gunBox = new THREE.Box3().setFromObject(weaponMesh);
         const gunSize = gunBox.getSize(new THREE.Vector3());
         const maxDim = Math.max(gunSize.x, gunSize.y, gunSize.z);
-        const desiredSize = 1.2;
         if (maxDim > 0) {
-            const s = desiredSize / maxDim;
+            const s = 1.0 / maxDim;
             weaponMesh.scale.set(s, s, s);
         }
 
-        // Position: right side of character, at hand height
-        // These offsets are relative to the playerMesh (character body center)
-        weaponMesh.position.set(0.5, 0.9, 0.3);
-        weaponMesh.rotation.set(0, Math.PI, 0); // point forward
-        
-        weaponMesh.castShadow = true;
-        weaponMesh.receiveShadow = true;
-        
-        playerMesh.add(weaponMesh);
-        console.log('Gun attached to player!');
-        
-    } catch (err) {
-        console.error('Failed to load weapons:', err);
+        weaponMesh.traverse(child => {
+            if (child.isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+
+        // Attach to right arm if detected, else attach to playerMesh directly
+        const parent = rigRightArm || playerMesh;
+        // Offset: to the right side, at hand height, pointing forward
+        weaponMesh.position.set(0.4, -0.1, 0.2);
+        weaponMesh.rotation.set(0, Math.PI, 0);
+        parent.add(weaponMesh);
+        console.log(`Loaded weapon: ${def.name}`);
+    } catch(err) {
+        console.error(`Failed to load weapon ${def.name}:`, err);
     }
 }
 
@@ -582,21 +612,42 @@ function updatePlayer(delta) {
     // Sync visual mesh to physics body
     if (playerMesh) {
         playerMesh.position.copy(playerBody.position);
-        playerMesh.position.y -= 0.8; // Offset because cylinder origin is at center
-        
-        // Procedural Animation (Bobbing) when moving
-        const currentSpeedVal = Math.sqrt(playerBody.velocity.x**2 + playerBody.velocity.z**2);
-        if (currentSpeedVal > 0.5) {
-            const time = clock.getElapsedTime();
-            const bobRate = isCrouching ? 10 : (keys.shift ? 20 : 15);
-            const bobAmount = 0.05;
-            playerMesh.position.y += Math.sin(time * bobRate) * bobAmount;
-            
-            // Waddle side to side
-            playerMesh.rotation.z = Math.sin(time * bobRate * 0.5) * 0.05;
+        playerMesh.position.y -= 0.8; // feet aligned to bottom of cylinder
+
+        const time = clock.getElapsedTime();
+        const speedVal = Math.sqrt(playerBody.velocity.x**2 + playerBody.velocity.z**2);
+        const isMoving = speedVal > 0.5;
+        const bobRate  = isCrouching ? 8 : (keys.shift ? 18 : 12);
+
+        // Update GLB animation mixer if present
+        if (playerMesh.userData.mixer) {
+            playerMesh.userData.mixer.update(delta);
+        }
+
+        // Procedural limb animation
+        if (isMoving) {
+            const swing = Math.sin(time * bobRate);
+
+            if (rigRightArm) rigRightArm.rotation.x =  swing * 0.6;
+            if (rigLeftArm)  rigLeftArm.rotation.x  = -swing * 0.6;
+            if (rigRightLeg) rigRightLeg.rotation.x = -swing * 0.7;
+            if (rigLeftLeg)  rigLeftLeg.rotation.x  =  swing * 0.7;
+            if (rigUpperBody) rigUpperBody.rotation.z = Math.sin(time * bobRate * 0.5) * 0.03;
+
+            // Vertical body bob
+            playerMesh.position.y += Math.sin(time * bobRate * 2) * 0.03;
+            playerMesh.rotation.z  = Math.sin(time * bobRate * 0.5) * 0.03;
         } else {
+            // Idle sway — subtle breathing
+            const idleSwing = Math.sin(time * 1.5) * 0.04;
+            if (rigRightArm) rigRightArm.rotation.x = idleSwing;
+            if (rigLeftArm)  rigLeftArm.rotation.x  = idleSwing;
+            if (rigUpperBody) rigUpperBody.rotation.z = idleSwing * 0.5;
             playerMesh.rotation.z = 0;
         }
+
+        // Crouch: lower the body slightly
+        if (isCrouching) playerMesh.position.y -= 0.3;
     }
 
     // Update Third-Person Camera
@@ -687,42 +738,29 @@ btnCloseShop.addEventListener('click', () => {
     canvas.requestPointerLock();
 });
 
-btnBuySmg.addEventListener('click', () => {
-    if (gameState.coins >= 200) {
-        addCoins(-200);
-        shootRate = 0.05; // faster
-        weaponDamage = 15; // less damage per bullet
-        btnBuySmg.innerText = "Equipped";
-        btnBuySmg.classList.replace('bg-blue-600', 'bg-gray-600');
-        // Tint weapon blue
-        if (weaponMesh) {
-            weaponMesh.traverse(child => {
-                if (child.isMesh && child.material) {
-                    child.material = child.material.clone();
-                    child.material.color.setHex(0x3b82f6);
-                }
-            });
+// Dynamically build shop buy buttons
+WEAPONS.forEach((def, idx) => {
+    const btn = document.getElementById(`btn-buy-${def.id}`);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
+        if (idx === 0) {
+            // Free default — just equip
+            loadWeaponByIndex(0);
+            return;
         }
-    }
-});
-
-btnBuySniper.addEventListener('click', () => {
-    if (gameState.coins >= 400) {
-        addCoins(-400);
-        shootRate = 1.0; // very slow
-        weaponDamage = 80; // massive damage
-        btnBuySniper.innerText = "Equipped";
-        btnBuySniper.classList.replace('bg-purple-600', 'bg-gray-600');
-        // Tint weapon purple
-        if (weaponMesh) {
-            weaponMesh.traverse(child => {
-                if (child.isMesh && child.material) {
-                    child.material = child.material.clone();
-                    child.material.color.setHex(0xa855f7);
-                }
+        if (gameState.coins >= def.cost) {
+            addCoins(-def.cost);
+            loadWeaponByIndex(idx);
+            // Update all buttons to show which one is equipped
+            WEAPONS.forEach(w => {
+                const b = document.getElementById(`btn-buy-${w.id}`);
+                if (b) b.innerText = (w.id === def.id) ? 'Equipped ✓' : w.label;
             });
+        } else {
+            btn.innerText = 'Not enough coins!';
+            setTimeout(() => { btn.innerText = def.label; }, 1500);
         }
-    }
+    });
 });
 
 function startGame() {

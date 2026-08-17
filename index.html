@@ -84,38 +84,79 @@
     </div>
 
     <!-- Shop UI (Hidden by default) -->
-    <div id="shop-menu" class="absolute top-0 left-0 w-full h-full z-20 flex flex-col items-center justify-center bg-gray-900/95 backdrop-blur-md hidden pointer-events-auto">
-        <h2 class="text-4xl font-black mb-2 text-white">WEAPON SHOP</h2>
-        <p class="text-yellow-400 font-bold mb-8 text-xl">Balance: <span id="shop-coins">500</span> Coins</p>
-        
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full px-8">
-            <!-- Weapon 1 -->
-            <div class="bg-gray-800 p-6 rounded-xl border border-gray-600 flex flex-col items-center hover:border-white transition-colors">
-                <h3 class="text-xl font-bold text-white mb-2">Standard Rifle</h3>
-                <p class="text-gray-400 text-sm mb-4 text-center">Balanced fire rate and damage.</p>
-                <div class="flex-grow"></div>
-                <button class="w-full py-2 bg-gray-600 text-white font-bold rounded cursor-not-allowed opacity-50">Equipped</button>
-            </div>
-            
-            <!-- Weapon 2 -->
-            <div class="bg-gray-800 p-6 rounded-xl border border-blue-500/50 shadow-[0_0_15px_rgba(59,130,246,0.2)] flex flex-col items-center hover:border-blue-400 transition-colors">
-                <h3 class="text-xl font-bold text-blue-400 mb-2">Rapid Fire SMG</h3>
-                <p class="text-gray-400 text-sm mb-4 text-center">Extremely fast fire rate. Blue tint.</p>
-                <div class="flex-grow"></div>
-                <button id="btn-buy-smg" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded transition-colors shadow-lg">Buy (200 Coins)</button>
+    <div id="shop-menu" class="absolute top-0 left-0 w-full h-full z-20 flex flex-col items-center justify-center bg-gray-950/95 backdrop-blur-md hidden pointer-events-auto overflow-y-auto py-8">
+        <h2 class="text-5xl font-black mb-1 text-white tracking-tight">WEAPON SHOP</h2>
+        <p class="text-yellow-400 font-bold mb-6 text-xl">Balance: <span id="shop-coins">500</span> Coins</p>
+
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl w-full px-6">
+
+            <!-- AK-47 (FREE) -->
+            <div class="bg-gray-800/80 p-4 rounded-xl border border-yellow-500/60 shadow-[0_0_20px_rgba(217,119,6,0.3)] flex flex-col items-center">
+                <div class="text-3xl mb-1">🔫</div>
+                <h3 class="text-lg font-bold text-yellow-400 mb-1">AK-47</h3>
+                <p class="text-gray-400 text-xs mb-1 text-center">High damage. Full-auto.</p>
+                <p class="text-gray-500 text-xs mb-3">DMG: 30 | Rate: Fast</p>
+                <button id="btn-buy-ak47" class="w-full py-2 bg-yellow-600 hover:bg-yellow-500 text-white font-bold rounded text-sm transition-colors">Equipped ✓</button>
             </div>
 
-            <!-- Weapon 3 -->
-            <div class="bg-gray-800 p-6 rounded-xl border border-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.2)] flex flex-col items-center hover:border-purple-400 transition-colors">
-                <h3 class="text-xl font-bold text-purple-400 mb-2">Heavy Sniper</h3>
-                <p class="text-gray-400 text-sm mb-4 text-center">Slow fire rate, massive damage. Purple tint.</p>
-                <div class="flex-grow"></div>
-                <button id="btn-buy-sniper" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded transition-colors shadow-lg">Buy (400 Coins)</button>
+            <!-- M4 Carbine -->
+            <div class="bg-gray-800/80 p-4 rounded-xl border border-gray-500/60 flex flex-col items-center hover:border-gray-300 transition-colors">
+                <div class="text-3xl mb-1">🪖</div>
+                <h3 class="text-lg font-bold text-gray-200 mb-1">M4 Carbine</h3>
+                <p class="text-gray-400 text-xs mb-1 text-center">Accurate. Low recoil.</p>
+                <p class="text-gray-500 text-xs mb-3">DMG: 25 | Rate: Fast</p>
+                <button id="btn-buy-m4" class="w-full py-2 bg-gray-600 hover:bg-gray-500 text-white font-bold rounded text-sm transition-colors">150 Coins</button>
+            </div>
+
+            <!-- UZI -->
+            <div class="bg-gray-800/80 p-4 rounded-xl border border-amber-500/60 shadow-[0_0_15px_rgba(245,158,11,0.2)] flex flex-col items-center hover:border-amber-400 transition-colors">
+                <div class="text-3xl mb-1">💥</div>
+                <h3 class="text-lg font-bold text-amber-400 mb-1">UZI</h3>
+                <p class="text-gray-400 text-xs mb-1 text-center">Insane fire rate!</p>
+                <p class="text-gray-500 text-xs mb-3">DMG: 12 | Rate: Insane</p>
+                <button id="btn-buy-uzi" class="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded text-sm transition-colors">200 Coins</button>
+            </div>
+
+            <!-- PP-19 -->
+            <div class="bg-gray-800/80 p-4 rounded-xl border border-blue-500/60 shadow-[0_0_15px_rgba(59,130,246,0.2)] flex flex-col items-center hover:border-blue-400 transition-colors">
+                <div class="text-3xl mb-1">⚡</div>
+                <h3 class="text-lg font-bold text-blue-400 mb-1">PP-19 Vityaz</h3>
+                <p class="text-gray-400 text-xs mb-1 text-center">Soviet SMG. Very fast.</p>
+                <p class="text-gray-500 text-xs mb-3">DMG: 18 | Rate: Very Fast</p>
+                <button id="btn-buy-pp19" class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded text-sm transition-colors">250 Coins</button>
+            </div>
+
+            <!-- HK UMP -->
+            <div class="bg-gray-800/80 p-4 rounded-xl border border-emerald-500/60 shadow-[0_0_15px_rgba(16,185,129,0.2)] flex flex-col items-center hover:border-emerald-400 transition-colors">
+                <div class="text-3xl mb-1">🎯</div>
+                <h3 class="text-lg font-bold text-emerald-400 mb-1">HK UMP</h3>
+                <p class="text-gray-400 text-xs mb-1 text-center">Tactical. Balanced all round.</p>
+                <p class="text-gray-500 text-xs mb-3">DMG: 22 | Rate: Medium</p>
+                <button id="btn-buy-ump" class="w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded text-sm transition-colors">300 Coins</button>
+            </div>
+
+            <!-- FPS Pistol -->
+            <div class="bg-gray-800/80 p-4 rounded-xl border border-purple-500/60 shadow-[0_0_15px_rgba(139,92,246,0.2)] flex flex-col items-center hover:border-purple-400 transition-colors">
+                <div class="text-3xl mb-1">🔰</div>
+                <h3 class="text-lg font-bold text-purple-400 mb-1">FPS Pistol</h3>
+                <p class="text-gray-400 text-xs mb-1 text-center">High damage sidearm.</p>
+                <p class="text-gray-500 text-xs mb-3">DMG: 40 | Rate: Slow</p>
+                <button id="btn-buy-fpspist" class="w-full py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded text-sm transition-colors">100 Coins</button>
+            </div>
+
+            <!-- M590 Shotgun -->
+            <div class="bg-gray-800/80 p-4 rounded-xl border border-red-500/60 shadow-[0_0_20px_rgba(239,68,68,0.3)] flex flex-col items-center hover:border-red-400 transition-colors">
+                <div class="text-3xl mb-1">💣</div>
+                <h3 class="text-lg font-bold text-red-400 mb-1">M590 Shotgun</h3>
+                <p class="text-gray-400 text-xs mb-1 text-center">One shot, one kill.</p>
+                <p class="text-gray-500 text-xs mb-3">DMG: 90 | Rate: Very Slow</p>
+                <button id="btn-buy-m590" class="w-full py-2 bg-red-600 hover:bg-red-500 text-white font-bold rounded text-sm transition-colors">400 Coins</button>
             </div>
         </div>
-        
-        <button id="btn-close-shop" class="mt-12 px-8 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-colors">Close Shop</button>
+
+        <button id="btn-close-shop" class="mt-8 px-10 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-colors text-lg">✕ Close Shop</button>
     </div>
+
 
     <!-- Scripts -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
