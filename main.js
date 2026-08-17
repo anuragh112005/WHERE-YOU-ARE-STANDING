@@ -741,9 +741,26 @@ async function loadCharacter() {
         // Initialize AnimationMixer
         mixer = new THREE.AnimationMixer(swatFbx);
 
-        // Load all animations from Basic Shooter Pack
-        const animFiles = {
-            idle: './Basic Shooter Pack/rifle aiming idle.fbx',
+        // Load idle first and start playing immediately
+        try {
+            const idleFbx = await fbxLoader.loadAsync('./Basic Shooter Pack/rifle aiming idle.fbx');
+            if (idleFbx.animations && idleFbx.animations.length > 0) {
+                const action = mixer.clipAction(idleFbx.animations[0]);
+                animActions.idle = action;
+                action.play();
+                currentActionName = 'idle';
+            }
+        } catch (e) {
+            console.warn('Idle anim load error:', e);
+        }
+
+        scene.add(playerMesh);
+
+        // Equip default weapon in SWAT's hand
+        await weaponSystem.equip(SHOP_ITEMS.find(i => i.id === 'ak47'));
+
+        // Load remaining animations in parallel without blocking rendering
+        const otherAnims = {
             walk: './Basic Shooter Pack/walking.fbx',
             run: './Basic Shooter Pack/rifle run.fbx',
             reload: './Basic Shooter Pack/reloading.fbx',
@@ -753,7 +770,7 @@ async function loadCharacter() {
             hit: './Basic Shooter Pack/hit reaction.fbx'
         };
 
-        for (const [name, path] of Object.entries(animFiles)) {
+        Promise.all(Object.entries(otherAnims).map(async ([name, path]) => {
             try {
                 const animFbx = await fbxLoader.loadAsync(path);
                 if (animFbx.animations && animFbx.animations.length > 0) {
@@ -765,21 +782,8 @@ async function loadCharacter() {
                     }
                     animActions[name] = action;
                 }
-            } catch (err) {
-                console.warn(`Could not load animation ${name}:`, err);
-            }
-        }
-
-        // Start in Idle animation
-        if (animActions.idle) {
-            animActions.idle.play();
-            currentActionName = 'idle';
-        }
-
-        scene.add(playerMesh);
-
-        // Equip default weapon in SWAT's hand
-        await weaponSystem.equip(SHOP_ITEMS.find(i => i.id === 'ak47'));
+            } catch (err) {}
+        }));
 
     } catch (err) {
         console.error('Failed to load SWAT character:', err);
