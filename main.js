@@ -347,7 +347,6 @@ function handleNetworkShoot(data) {
 
 // Phase 2: Setup Player Physics and Model
 async function loadPlayer() {
-    // 1. Physics Body (Cylinder representing the player)
     const radius = 0.5;
     const height = 1.6;
     const playerShape = new CANNON.Cylinder(radius, radius, height, 16);
@@ -360,59 +359,28 @@ async function loadPlayer() {
     playerBody.linearDamping = 0.9;
     world.addBody(playerBody);
 
-    // 2. Load Visual Model
     try {
         const gltf = await gltfLoader.loadAsync('./Low_Poly_Character-8f36aa0e/glb/converted/source.glb');
         playerMesh = gltf.scene;
 
-        // If the GLB has built-in animations, play them
+        // Play built-in GLB animations if any
         if (gltf.animations && gltf.animations.length > 0) {
             const mixer = new THREE.AnimationMixer(playerMesh);
             gltf.animations.forEach(clip => mixer.clipAction(clip).play());
-            // Store mixer so we can update it in the loop
             playerMesh.userData.mixer = mixer;
+            console.log('Playing', gltf.animations.length, 'built-in animations');
         }
 
-        // Procedural rig: detect limb meshes by their position relative to center
-        // After adding to scene, find the bounding box center of the whole model
-        const wholebox = new THREE.Box3().setFromObject(playerMesh);
-        const wholeCenter = wholebox.getCenter(new THREE.Vector3());
-        const wholeHeight = wholebox.max.y - wholebox.min.y;
-        const midY = wholebox.min.y + wholeHeight * 0.45; // waist level
-
+        // Tint all meshes
         playerMesh.traverse((child) => {
             if (!child.isMesh) return;
-            const box = new THREE.Box3().setFromObject(child);
-            const c = box.getCenter(new THREE.Vector3());
-            const sz = box.getSize(new THREE.Vector3());
-
-            // Tint color
+            child.castShadow = true;
+            child.receiveShadow = true;
             if (child.material) {
                 child.material = child.material.clone();
                 child.material.color.setHex(colorIndex);
             }
-            child.castShadow = true;
-            child.receiveShadow = true;
-
-            // Skip very large meshes (body torso)
-            if (sz.x > 0.6 && sz.y > 0.7) {
-                if (!rigUpperBody) rigUpperBody = child;
-                return;
-            }
-
-            // Arms: above waist, to left or right of center
-            if (c.y > midY && Math.abs(c.x - wholeCenter.x) > 0.1) {
-                if (c.x < wholeCenter.x && !rigLeftArm)  rigLeftArm  = child;
-                if (c.x > wholeCenter.x && !rigRightArm) rigRightArm = child;
-            }
-            // Legs: below waist
-            if (c.y < midY && sz.y > 0.2) {
-                if (c.x < wholeCenter.x && !rigLeftLeg)  rigLeftLeg  = child;
-                if (c.x > wholeCenter.x && !rigRightLeg) rigRightLeg = child;
-            }
         });
-
-        console.log('Rig found - LA:', !!rigLeftArm, 'RA:', !!rigRightArm, 'LL:', !!rigLeftLeg, 'RL:', !!rigRightLeg);
 
         playerMesh.scale.set(1, 1, 1);
         scene.add(playerMesh);
@@ -420,7 +388,7 @@ async function loadPlayer() {
         // Load default weapon (AK-47)
         loadWeaponByIndex(0);
     } catch(err) {
-        console.error("Failed to load player mesh", err);
+        console.error("Failed to load player mesh:", err);
     }
 }
 
@@ -442,29 +410,43 @@ async function loadWeaponByIndex(idx) {
         const gltf = await gltfLoader.loadAsync(def.file);
         weaponMesh = gltf.scene;
 
-        // Auto-scale to ~1 unit length
+        // Auto-scale to 1 unit (longest dimension)
         const gunBox = new THREE.Box3().setFromObject(weaponMesh);
         const gunSize = gunBox.getSize(new THREE.Vector3());
         const maxDim = Math.max(gunSize.x, gunSize.y, gunSize.z);
-        if (maxDim > 0) {
-            const s = 1.0 / maxDim;
-            weaponMesh.scale.set(s, s, s);
+        if (maxDim > 0) weaponMesh.scale.set(1 / maxDim, 1 / maxDim, 1 / maxDim);
+
+        // Auto-orient: figure out which axis is the gun barrel
+        // Most guns are long along X or Z. We want the barrel pointing forward (-Z in Three.js).
+        // After scaling, recalculate size
+        const scaledBox = new THREE.Box3().setFromObject(weaponMesh);
+        const scaledSize = scaledBox.getSize(new THREE.Vector3());
+
+        // Reset rotation first
+        weaponMesh.rotation.set(0, 0, 0);
+
+        if (scaledSize.x > scaledSize.y && scaledSize.x > scaledSize.z) {
+            // Barrel along X axis — rotate 90° around Y so it faces forward
+            weaponMesh.rotation.set(0, -Math.PI / 2, 0);
+        } else if (scaledSize.z > scaledSize.y) {
+            // Barrel along Z — might need to flip 180° depending on orientation
+            // Check if gun appears upside down (Y-size very small = flat = needs flip)
+            weaponMesh.rotation.set(0, Math.PI, 0);
+        }
+        // If Y is largest — gun standing upright — rotate to horizontal
+        if (scaledSize.y > scaledSize.x && scaledSize.y > scaledSize.z) {
+            weaponMesh.rotation.set(Math.PI / 2, 0, 0);
         }
 
         weaponMesh.traverse(child => {
-            if (child.isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
+            if (child.isMesh) { child.castShadow = true; child.receiveShadow = true; }
         });
 
-        // Attach to right arm if detected, else attach to playerMesh directly
-        const parent = rigRightArm || playerMesh;
-        // Offset: to the right side, at hand height, pointing forward
-        weaponMesh.position.set(0.4, -0.1, 0.2);
-        weaponMesh.rotation.set(0, Math.PI, 0);
-        parent.add(weaponMesh);
-        console.log(`Loaded weapon: ${def.name}`);
+        // Attach directly to playerMesh — right side, at chest/arm height
+        // x=right, y=up (chest level from mesh origin), z=forward
+        weaponMesh.position.set(0.45, 0.9, 0.15);
+        playerMesh.add(weaponMesh);
+        console.log(`Weapon loaded: ${def.name}, size: ${scaledSize.x.toFixed(2)} ${scaledSize.y.toFixed(2)} ${scaledSize.z.toFixed(2)}`);
     } catch(err) {
         console.error(`Failed to load weapon ${def.name}:`, err);
     }
@@ -612,7 +594,7 @@ function updatePlayer(delta) {
     // Sync visual mesh to physics body
     if (playerMesh) {
         playerMesh.position.copy(playerBody.position);
-        playerMesh.position.y -= 0.8; // feet aligned to bottom of cylinder
+        playerMesh.position.y -= 0.8;
 
         const time = clock.getElapsedTime();
         const speedVal = Math.sqrt(playerBody.velocity.x**2 + playerBody.velocity.z**2);
@@ -624,25 +606,15 @@ function updatePlayer(delta) {
             playerMesh.userData.mixer.update(delta);
         }
 
-        // Procedural limb animation
+        // Whole-body procedural animation (safe — does not touch individual limb meshes)
         if (isMoving) {
-            const swing = Math.sin(time * bobRate);
-
-            if (rigRightArm) rigRightArm.rotation.x =  swing * 0.6;
-            if (rigLeftArm)  rigLeftArm.rotation.x  = -swing * 0.6;
-            if (rigRightLeg) rigRightLeg.rotation.x = -swing * 0.7;
-            if (rigLeftLeg)  rigLeftLeg.rotation.x  =  swing * 0.7;
-            if (rigUpperBody) rigUpperBody.rotation.z = Math.sin(time * bobRate * 0.5) * 0.03;
-
-            // Vertical body bob
-            playerMesh.position.y += Math.sin(time * bobRate * 2) * 0.03;
-            playerMesh.rotation.z  = Math.sin(time * bobRate * 0.5) * 0.03;
+            // Walk/run body bob up-down
+            playerMesh.position.y += Math.sin(time * bobRate * 2) * 0.04;
+            // Subtle side lean while running
+            playerMesh.rotation.z = Math.sin(time * bobRate * 0.5) * 0.03;
         } else {
-            // Idle sway — subtle breathing
-            const idleSwing = Math.sin(time * 1.5) * 0.04;
-            if (rigRightArm) rigRightArm.rotation.x = idleSwing;
-            if (rigLeftArm)  rigLeftArm.rotation.x  = idleSwing;
-            if (rigUpperBody) rigUpperBody.rotation.z = idleSwing * 0.5;
+            // Idle breathing sway
+            playerMesh.position.y += Math.sin(time * 1.5) * 0.01;
             playerMesh.rotation.z = 0;
         }
 
